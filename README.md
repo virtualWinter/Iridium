@@ -149,6 +149,14 @@ edge while the page occupies the rest.
 Passing a URL opens it in the first tab. Ctrl+T opens another, Ctrl+H opens the
 history pane and Ctrl+, opens settings, which manages extensions and profiles.
 
+Settings is a frameless window with the same rounded shell, palette, window
+controls and drag region as the browser window, with the category rail against
+the right edge where the browser's sidebar is. Preferences take effect as they
+are changed — there is no Apply — and the homepage and search address both
+offer a reset to the built-in default. A homepage that is not a web address is
+reported where it is typed, because the alternative is a search engine opening
+in every new tab with nothing on screen to say why.
+
 Profiles are directories under `XDG_DATA_HOME/iridium/profiles/<name>`, each
 with its own extensions, extension data, settings and history. Switching
 profiles restarts the browser, because open tabs belong to the profile that
@@ -179,7 +187,7 @@ offscreen Qt platform and skip themselves when neither is available:
 | `webview-theme`, `webview-download`, `webview-media`, `webview-history` | Colour scheme, downloads, media playback, history recording |
 | `webview-extension` | A content script from a real on-disk extension running in a matching page |
 | `extensions-manifest`, `extensions-registry`, `extensions-paths`, `extensions-api`, `extensions-dispatcher` | Manifest parsing, match patterns, install and enable, the API surface, the dispatcher |
-| `settings`, `settings-window-categories`, `settings-store` | The settings panes, as widgets |
+| `settings`, `settings-window-categories`, `settings-store` | The settings panes and window, the store's defaults, address resolution and per-profile isolation |
 | `browser-data` | Profiles and history storage |
 | `extensions-coverage`, `extensions-codegen` | The generated specification inventory has not drifted from the documentation |
 

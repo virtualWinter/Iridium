@@ -50,12 +50,17 @@
 - [x] Sidebar (Zen-style sidebar: window controls, navigation buttons, address bar and tab list; new-tab and downloads buttons in the bottom row; sits against the right edge)
 - [x] Downloads (XDG downloads directory, unique file names, progress/cancel/open menu)
 - [x] System color scheme (prefers-color-scheme)
+- [x] Settings window (general, history, extensions, profiles and appearance
+      panes; same shell and styling as the browser window; fields commit as they
+      are typed, panes re-read on show, and every preference is read by something:
+      `settings`, `settings-store`, `settings-window-categories`)
 - [ ] Extension panels via `browser.sidebarAction`, once the extension host
       lands. These render in the sidebar alongside the tab list, as a section
       below the existing controls, rather than in a separate panel host
 - [x] Profiles (named directories under XDG data; per-profile extensions, extension storage, settings and history; create/switch/delete in settings; switching restarts because open tabs belong to the profile that created them)
 - [x] History (per-profile SQLite store; records on navigation and title, skips internal pages; search, open, forget, clear and age-based deletion; retention + count pruning)
-- [ ] Permissions
+- [ ] Permissions (as a browser-wide prompt; per-extension optional permissions
+      are already grantable from the extensions pane)
 
 ## Media
 - [x] GStreamer runtime dependencies documented (audio sink, Opus parser, H.264/AAC decoders)

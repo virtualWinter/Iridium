@@ -1,15 +1,18 @@
 #include "ui/settings/SettingsWindow.hpp"
 
-#include "extensions/ExtensionRegistry.hpp"
+#include "ui/BrowserStyle.hpp"
 #include "ui/MainWindow.hpp"
+#include "ui/decoration/decorationtheme.h"
+#include "ui/decoration/windowdecoration.h"
 #include "ui/settings/AppearancePage.hpp"
 #include "ui/settings/ExtensionsPage.hpp"
 #include "ui/settings/GeneralPage.hpp"
 #include "ui/settings/HistoryPage.hpp"
 #include "ui/settings/ProfilesPage.hpp"
 
-#include <QDialogButtonBox>
-#include <QFont>
+#include <QFrame>
+#include <QGuiApplication>
+#include <QHideEvent>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
@@ -24,7 +27,7 @@ namespace iridium {
 namespace {
 // A real role, not UserRole+n: item data is keyed by int.
 constexpr int kCategoryRole = Qt::UserRole + 100;
-}
+} // namespace
 
 SettingsWindow::SettingsWindow(MainWindow& window, extensions::ExtensionRegistry& registry,
     history::HistoryStore& historyStore, QWidget* parent)
@@ -40,87 +43,92 @@ SettingsWindow::SettingsWindow(MainWindow& window, extensions::ExtensionRegistry
     // A dialog should not be resized smaller than its panes can usefully be.
     setMinimumSize(680, 480);
 
+    // Same shell as the browser window: rounded, translucent, frameless, with
+    // the same stylesheet. Without this the settings window is the one place in
+    // the application that looks like it came from somewhere else.
+    m_chrome = std::make_unique<ui::FramelessChrome>(this);
+    setStyleSheet(ui::sharedStyleSheet(palette()));
+
     buildUi();
     selectCategoryByIndex(0);
 }
 
+SettingsWindow::~SettingsWindow() = default;
+
 void SettingsWindow::buildUi()
 {
-    // Scoped to this dialog rather than the application: object names keep the
-    // rules from leaking into the browser window and vice versa.
-    setStyleSheet(QString::fromLatin1(R"(
-        QDialog#settingsWindow { background: %1; }
-        QListWidget#settingsCategories { background: transparent; border: 0; outline: 0; }
-        QListWidget#settingsCategories::item { color: palette(text); border-radius: 8px;
-            padding: 9px 12px; margin: 2px 0; }
-        QListWidget#settingsCategories::item:hover { background: palette(midlight); }
-        QListWidget#settingsCategories::item:selected { background: palette(highlight);
-            color: palette(highlighted-text); }
-        QStackedWidget#settingsPanes { background: transparent; }
-        QWidget { background: transparent; }
-        QLabel#settingsSubtitle, QLabel#settingsFootnote { color: palette(mid); }
-        QLabel#settingsCaption { color: palette(mid); font-weight: 600; }
-        QLabel#settingsValue { color: palette(text); }
-        QLabel#settingsEmpty { color: palette(mid); padding: 24px; }
-        QLabel#settingsStatus { color: palette(mid); padding: 6px 8px;
-            border-radius: 6px; background: palette(base); }
-        QLabel#settingsStatus[error="true"] { color: palette(brightText);
-            background: #b3261e; border: 1px solid #8c1d18; }
-        QListWidget#extensionsList { background: transparent; border: 0; outline: 0; }
-        QListWidget#extensionsList::item { border-radius: 8px; padding: 7px 8px;
-            color: palette(text); }
-        QListWidget#extensionsList::item:hover { background: palette(midlight); }
-        QListWidget#extensionsList::item:selected { background: palette(highlight);
-            color: palette(highlighted-text); }
-        QScrollArea#settingsDetailsScroll { background: transparent; border: 0; }
-        QWidget#settingsDetails { background: palette(base); border-radius: 10px; }
-        QLineEdit#settingsSearch { background: palette(base); border: 1px solid palette(mid);
-            border-radius: 8px; padding: 6px 10px; color: palette(text); }
-        QLineEdit#settingsSearch:focus { border-color: palette(highlight); }
-        QComboBox#settingsCombo { background: palette(base); border: 1px solid palette(mid);
-            border-radius: 8px; padding: 5px 10px; color: palette(text); }
-        QToolButton#settingsButton { background: palette(base); color: palette(button-text);
-            border: 1px solid palette(mid); border-radius: 8px; padding: 6px 14px; }
-        QToolButton#settingsButton:hover { background: palette(midlight); }
-        QToolButton#settingsButton:disabled { color: palette(disabled, palette(text)); }
-    )").arg(palette().color(QPalette::Window).name()));
+    // The shell widget. Its own name is what the shared stylesheet keys the
+    // rounded background on, so it is not the dialog itself.
+    auto* root = new QWidget(this);
+    root->setObjectName(QStringLiteral("settingsRoot"));
+    auto* rootLayout = new QHBoxLayout(root);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
 
-    auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(16, 16, 16, 12);
-    root->setSpacing(12);
+    // The pane goes in a bordered frame inset from the shell, the way the page
+    // is inset from the window edge in the browser window. It is added first so
+    // the rail takes the right edge, matching where the browser's sidebar sits.
+    auto* content = new QFrame(root);
+    content->setObjectName(QStringLiteral("settingsContent"));
+    auto* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(14, 12, 14, 14);
+    contentLayout->setSpacing(0);
 
-    auto* title = new QLabel(tr("Settings"), this);
-    QFont titleFont = title->font();
-    titleFont.setPointSizeF(titleFont.pointSizeF() * 1.5);
-    titleFont.setBold(true);
-    title->setFont(titleFont);
-    root->addWidget(title);
+    m_panes = new QStackedWidget(content);
+    m_panes->setObjectName(QStringLiteral("settingsPanes"));
+    contentLayout->addWidget(m_panes, 1);
+    rootLayout->addWidget(content, 1);
 
-    auto* body = new QHBoxLayout;
-    body->setSpacing(16);
+    // The category rail, against the right edge like the browser sidebar.
+    auto* rail = new QWidget(root);
+    rail->setObjectName(QStringLiteral("settingsCategories"));
+    rail->setFixedWidth(200);
+    auto* railLayout = new QVBoxLayout(rail);
+    railLayout->setContentsMargins(8, 6, 8, 10);
+    railLayout->setSpacing(10);
 
-    m_categories = new QListWidget(this);
-    m_categories->setObjectName(QStringLiteral("settingsCategories"));
-    m_categories->setFixedWidth(190);
+    // A frameless window has no title bar, so the rail header carries the
+    // window controls and doubles as the drag region.
+    auto* header = new QWidget(rail);
+    auto* headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(4);
+    auto* dragHandle = m_chrome->dragHandle();
+    dragHandle->setParent(header);
+    dragHandle->setMinimumWidth(8);
+    headerLayout->addWidget(dragHandle, 1);
+    railLayout->addWidget(header);
+
+    m_categories = new QListWidget(rail);
+    m_categories->setObjectName(QStringLiteral("settingsCategoryList"));
+    m_categories->setFixedWidth(184);
     m_categories->setSelectionMode(QAbstractItemView::SingleSelection);
     m_categories->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    body->addWidget(m_categories);
+    m_categories->setFrameShape(QFrame::NoFrame);
+    railLayout->addWidget(m_categories, 1);
 
     // Connected once, before any row exists, so selecting a category cannot
     // arrive before there is a pane to show.
     connect(m_categories, &QListWidget::currentRowChanged,
         this, &SettingsWindow::selectCategoryByIndex);
 
-    m_panes = new QStackedWidget(this);
-    m_panes->setObjectName(QStringLiteral("settingsPanes"));
-    body->addWidget(m_panes, 1);
-    root->addLayout(body, 1);
+    addWindowControls();
+
+    rootLayout->addWidget(rail);
+
+    // A QDialog's own layout would centre this on top of the shell margins;
+    // the shell is the dialog's whole content, so the margins are zero and the
+    // rail's own margins do the spacing.
+    auto* outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+    outer->addWidget(root);
 
     const auto addCategory = [this](const QString& id, const QString& label,
         QStyle::StandardPixmap icon) {
         auto* item = new QListWidgetItem(style()->standardIcon(icon), label, m_categories);
         item->setData(kCategoryRole, id);
-        item->setSizeHint(QSize(0, 34));
+        item->setSizeHint(QSize(0, 36));
         return item;
     };
 
@@ -131,9 +139,9 @@ void SettingsWindow::buildUi()
     addCategory(profilesCategory(), tr("Profiles"), QStyle::SP_DirIcon);
     addCategory(appearanceCategory(), tr("Appearance"), QStyle::SP_DesktopIcon);
 
-    auto* general = new GeneralPage(m_panes);
-    m_paneForCategory.insert(generalCategory(), general);
-    m_panes->addWidget(general);
+    m_generalPage = new GeneralPage(m_panes);
+    m_paneForCategory.insert(generalCategory(), m_generalPage);
+    m_panes->addWidget(m_generalPage);
 
     // Visited while this window was closed are recorded by the tabs, and the pane
     // holds no copy of the data, so it is refreshed each time the window opens.
@@ -146,21 +154,58 @@ void SettingsWindow::buildUi()
     m_paneForCategory.insert(extensionsCategory(), extensions);
     m_panes->addWidget(extensions);
 
-    auto* appearance = new AppearancePage(m_panes);
-    m_paneForCategory.insert(appearanceCategory(), appearance);
-    m_panes->addWidget(appearance);
+    // Kept, not just registered in the map: showEvent has to re-read it, because
+    // the store is re-pointed at another profile's file on a profile switch and
+    // the pane is built once.
+    m_appearancePage = new AppearancePage(m_panes);
+    m_paneForCategory.insert(appearanceCategory(), m_appearancePage);
+    m_panes->addWidget(m_appearancePage);
 
     m_profilesPage = new ProfilesPage(m_panes);
     m_paneForCategory.insert(profilesCategory(), m_profilesPage);
     m_panes->addWidget(m_profilesPage);
 
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);
-    root->addWidget(buttons);
-
-    // Ctrl+W and Escape both close, matching the rest of the browser.
+    // Ctrl+W and Escape both close, matching the rest of the browser. Escape is
+    // a QDialog default; the shortcut is here because the frameless window no
+    // longer has a title-bar close button to fall back on.
     auto* closeShortcut = new QShortcut(QKeySequence::Close, this);
     connect(closeShortcut, &QShortcut::activated, this, &QDialog::accept);
+}
+
+void SettingsWindow::addWindowControls()
+{
+    const auto& theme = DecorationTheme::system();
+    auto* rail = m_categories->parentWidget();
+    auto* layout = qobject_cast<QVBoxLayout*>(rail->layout());
+    if (!layout)
+        return;
+
+    // The right-hand set, falling back to the left: a theme may put its controls
+    // on either side, and the rail only has room at the bottom.
+    auto* controls = new QWidget(rail);
+    controls->setObjectName(QStringLiteral("settingsControls"));
+    auto* controlsLayout = new QHBoxLayout(controls);
+    controlsLayout->setContentsMargins(0, 0, 0, 0);
+    controlsLayout->setSpacing(theme.buttonSpacing());
+
+    const DecorationTheme::Side side =
+        theme.buttons(DecorationTheme::Side::Right).isEmpty()
+        ? DecorationTheme::Side::Left : DecorationTheme::Side::Right;
+    auto* decoration = new WindowDecoration(side, controls);
+    controlsLayout->addWidget(decoration);
+    controlsLayout->addStretch(1);
+
+    connect(decoration, &WindowDecoration::minimizeRequested,
+        this, &QWidget::showMinimized);
+    connect(decoration, &WindowDecoration::maximizeRestoreRequested, this, [this] {
+        isMaximized() ? showNormal() : showMaximized();
+    });
+    connect(decoration, &WindowDecoration::closeRequested, this, &QDialog::accept);
+
+    // Added last, below the category list: the list is what the rail is for, and
+    // the controls are only reached deliberately.
+    layout->addWidget(controls);
+    m_decorations.append(decoration);
 }
 
 void SettingsWindow::selectCategory(const QString& id)
@@ -176,12 +221,34 @@ void SettingsWindow::selectCategory(const QString& id)
 void SettingsWindow::showEvent(QShowEvent* event)
 {
     QDialog::showEvent(event);
-    // Both pages read live state that the tabs change while this window is
-    // closed, and neither holds a copy of it.
+    // Every page reads live state that changes while this window is closed, and
+    // none of them holds a copy of it. Reloading all of them is what keeps a
+    // setting changed elsewhere from showing its old value here.
+    if (m_generalPage)
+        m_generalPage->refresh();
     if (m_historyPage)
         m_historyPage->refresh();
     if (m_profilesPage)
         m_profilesPage->refresh();
+    if (m_appearancePage)
+        m_appearancePage->refresh();
+}
+
+void SettingsWindow::updateDecorationState()
+{
+    for (auto* decoration : m_decorations) {
+        decoration->setWindowActive(isActiveWindow());
+        decoration->setMaximized(isMaximized());
+    }
+}
+
+void SettingsWindow::changeEvent(QEvent* event)
+{
+    QDialog::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange
+        || event->type() == QEvent::ActivationChange) {
+        updateDecorationState();
+    }
 }
 
 void SettingsWindow::selectCategoryByIndex(int index)

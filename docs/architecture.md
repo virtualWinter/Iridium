@@ -125,6 +125,39 @@ since only the user directory is writable. `SettingsStore` is the single
 persisted source for preferences, and the colour-scheme override is derived from
 the stored scheme rather than kept alongside it, so the two cannot disagree.
 
+It is parented to the browser window and deliberately *not* `WA_DeleteOnClose`.
+That attribute deletes the dialog on close, and the cached pointer in `MainWindow`
+is not cleared when it happens, so the second open found a non-null pointer to a
+deleted `QDialog` and called `show()` on freed memory. Parenting gives the same
+no-leak outcome with a pointer that stays valid.
+
+Both top-level windows get their shell from `src/ui/BrowserStyle`:
+`FramelessChrome` for the translucency, the drag region and edge resizing, and
+`sharedStyleSheet` for the styling. Neither window restates the corner radii or
+the palette rules, so the settings window cannot drift away from looking like the
+browser window. A frameless settings window has no title bar, so its dismissal
+affordance is the system window control built into the category rail, placed on
+the same side the browser window puts its own.
+
+Two consequences for the panes, both of which were silent failures:
+
+- Fields commit on every keystroke rather than on `editingFinished`. That signal
+  fires on focus loss, which does not happen when the window is closed with
+  Escape or its close button, so text typed and then dismissed was discarded
+  without any indication it had never been saved.
+- `showEvent` re-reads every pane. The panes are built once and the store is
+  re-pointed at another profile's file on a profile switch, so a value set while
+  the window was closed would otherwise be shown as its previous value.
+
+`SettingsStore` also decides itself whether address-bar input is a URL or a
+search, by rule rather than by asking `QUrl::fromUserInput` whether the parsed
+host contains a dot. That question has the wrong answer twice over: a bare word
+gets an invented host, and `fromUserInput("localhost:8080").host()` is
+`localhost`, which has no dot — so a development server was searched for instead
+of opened. `looksLikeAddress` exposes the same rule to the settings UI, so a
+homepage that would only ever be searched for is reported where it is typed
+rather than showing up as a search engine in a new tab.
+
 `MainWindow` presents that state using a full-sidebar
 layout inspired by Zen Browser: tabs, navigation/address controls, and window
 controls live in the sidebar, next to stacked content pages; the

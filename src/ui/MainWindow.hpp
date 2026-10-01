@@ -30,6 +30,9 @@ namespace iridium {
 
 class Browser;
 class SettingsWindow;
+namespace ui {
+class FramelessChrome;
+}
 
 class MainWindow final : public QMainWindow {
 public:
@@ -44,7 +47,9 @@ public:
 
 protected:
     void changeEvent(QEvent* event) override;
-    bool eventFilter(QObject* watched, QEvent* event) override;
+    // Honours the "confirm before closing several tabs" preference. Without it
+    // the checkbox in the general pane would persist a value nothing reads.
+    void closeEvent(QCloseEvent* event) override;
 
 public:
     // Tab state for the extensions API layer, which Browser forwards to here
@@ -115,6 +120,10 @@ private:
     QList<QString> m_uris;
     QStringList m_faviconUrls;
     QList<WindowDecoration*> m_decorations;
+    // The frameless shell: the translucency, the drag region, edge resizing and
+    // the shared stylesheet. Held here so it outlives the widgets it filters
+    // events for.
+    std::unique_ptr<ui::FramelessChrome> m_chrome;
     QNetworkAccessManager* m_networkManager { nullptr };
     // Owned here so the window controls their lifetime; created in the
     // constructor once the tab list exists.

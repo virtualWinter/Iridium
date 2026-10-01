@@ -8,19 +8,26 @@
 #include "browser/HistoryStore.hpp"
 #include "browser/ProfileManager.hpp"
 #include "extensions/ExtensionRegistry.hpp"
+#include "ui/BrowserStyle.hpp"
 #include "ui/MainWindow.hpp"
+#include "ui/decoration/windowdecoration.h"
+#include "ui/settings/AppearancePage.hpp"
+#include "ui/settings/GeneralPage.hpp"
 #include "ui/settings/SettingsStore.hpp"
 #include "ui/settings/HistoryPage.hpp"
 #include "ui/settings/SettingsWindow.hpp"
 
 #include <QApplication>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QSet>
 #include <QShowEvent>
 #include <QStackedWidget>
 #include <QTemporaryDir>
+#include <QToolButton>
 
 #include <cstdio>
 #include <string>
@@ -133,9 +140,27 @@ int main(int argc, char** argv)
             "an unknown category id leaves the pane unchanged");
     }
 
-    // The window owns a dialog button box, so it can be dismissed.
-    check(settings.findChild<QDialogButtonBox*>() != nullptr,
-        "the settings window has a close button box");
+    // The window is frameless, so it has no title bar to close it and the
+    // dismissal affordance is the system window control added by
+    // addWindowControls(). Checked structurally: a QDialogButtonBox is what the
+    // window used to own, and this asserts there is still a way to close it
+    // without hard-coding which control that turns out to be.
+    check(settings.findChild<WindowDecoration*>() != nullptr
+            || settings.findChild<QDialogButtonBox*>() != nullptr,
+        "the settings window has a way to be dismissed");
+
+    // The shell the browser window also uses, so the two look like one
+    // application rather than a browser window beside a platform dialog.
+    check(settings.styleSheet() == iridium::ui::sharedStyleSheet(settings.palette()),
+        "the settings window uses the shared stylesheet");
+    check(settings.testAttribute(Qt::WA_TranslucentBackground),
+        "the settings window is translucent like the browser window");
+    check(settings.windowFlags().testFlag(Qt::FramelessWindowHint),
+        "the settings window is frameless like the browser window");
+    check(settings.findChild<QWidget*>(QStringLiteral("settingsRoot")) != nullptr,
+        "the settings window has the shared rounded shell widget");
+    check(settings.findChild<QWidget*>(QStringLiteral("settingsCategories")) != nullptr,
+        "the category rail exists and is named for the shared stylesheet");
 
     // Showing the window refreshes the live-state pages. History is recorded
     // here while the window is not shown, which is exactly the case refresh()
@@ -168,6 +193,129 @@ int main(int argc, char** argv)
     // leave the window in a broken state.
     for (const QString& category : categories)
         settings.selectCategory(category);
+
+    // Showing the window re-reads every page, not only the two that were already
+    // being refreshed. A setting changed while the window is closed used to be
+    // shown as its old value: the general and appearance panes were filled once,
+    // when they were built, and never again.
+    {
+        SettingsStore& store = SettingsStore::instance();
+        auto* generalPage = settings.findChild<iridium::GeneralPage*>(
+            QStringLiteral("generalPage"));
+        check(generalPage != nullptr, "the general page is in the window");
+        auto* homeField = generalPage
+            ? generalPage->findChild<QLineEdit*>(QStringLiteral("settingsSearch"))
+            : nullptr;
+        check(homeField != nullptr, "the general page has a text field");
+        if (homeField) {
+            store.setHomePage(QStringLiteral("https://changed-while-hidden.test/"));
+            settings.show();
+            settings.hide();
+            check(homeField->text()
+                    == QStringLiteral("https://changed-while-hidden.test/"),
+                "a homepage set while the window was closed is shown, got "
+                    + homeField->text().toStdString());
+
+            // Cleared while hidden: the field must go back to empty rather than
+            // keeping the previous value, because the stored value is now unset
+            // and the default is not something the field claims to hold.
+            store.setHomePage({});
+            settings.show();
+            settings.hide();
+            check(homeField->text().isEmpty(),
+                "an unset homepage shows as an empty field, got "
+                    + homeField->text().toStdString());
+        }
+
+        store.setColorScheme(QStringLiteral("light"));
+        settings.show();
+        settings.hide();
+        auto* appearancePage = settings.findChild<iridium::AppearancePage*>(
+            QStringLiteral("appearancePage"));
+        auto* schemeCombo = appearancePage
+            ? appearancePage->findChild<QComboBox*>(
+                QStringLiteral("settingsCombo"))
+            : nullptr;
+        check(schemeCombo != nullptr, "the appearance page has a combo");
+        check(schemeCombo && schemeCombo->currentData().toString()
+                == QStringLiteral("light"),
+            "a colour scheme set while the window was closed is shown");
+    }
+
+    // Opening the settings window twice must not use a freed dialog.
+    //
+    // MainWindow caches the dialog pointer and used to set WA_DeleteOnClose on
+    // it without clearing the pointer, so the second open found a non-null
+    // pointer to a deleted QDialog and called show() on freed memory. Driven
+    // through the sidebar's settings button, which is the path a user takes, and
+    // closing in between with Escape: the escape route and the button route are
+    // the two ways the window is dismissed.
+    {
+        // Located by its tooltip, which is what identifies it to a user. Every
+        // sidebar button shares one object name, so the name cannot address one.
+        QList<QToolButton*> buttons;
+        for (auto* button : window.findChildren<QToolButton*>()) {
+            if (button->toolTip().compare(QStringLiteral("Settings"),
+                    Qt::CaseInsensitive) == 0) {
+                buttons.append(button);
+            }
+        }
+        auto* settingsButton = buttons.isEmpty() ? nullptr : buttons.first();
+        check(settingsButton != nullptr, "the sidebar has a settings button");
+
+        if (settingsButton) {
+            // Shown, because a dialog's isVisible() is false while its parent is
+            // hidden, which would make the visibility assertions below pass for
+            // the wrong reason.
+            window.show();
+            app.processEvents();
+
+            // Every settings window parented to the browser window, not just the
+            // first: this test already built one of its own above, so a single
+            // findChild would return that one rather than the one the button
+            // opened.
+            const auto settingsWindows = [&window] {
+                QList<SettingsWindow*> found;
+                for (auto* candidate : window.findChildren<SettingsWindow*>())
+                    found.append(candidate);
+                return found;
+            };
+            const int before = settingsWindows().size();
+
+            settingsButton->click();     // first open
+            app.processEvents();
+            const QList<SettingsWindow*> afterFirst = settingsWindows();
+            check(afterFirst.size() == before + 1,
+                "the first open creates a settings window, got "
+                    + std::to_string(afterFirst.size()) + " for "
+                    + std::to_string(before) + " before");
+            // The last one is the newly created one: the click appends it.
+            SettingsWindow* first = afterFirst.isEmpty()
+                ? nullptr : afterFirst.last();
+            check(first != nullptr, "the first open creates the settings window");
+            check(first && first->isVisible(), "and shows it");
+
+            if (first) {
+                first->close();          // the dismissal that used to free it
+                app.processEvents();
+                check(!first->isVisible(), "closing hides it");
+            }
+
+            settingsButton->click();     // second open: the stale-pointer path
+            app.processEvents();
+            const QList<SettingsWindow*> afterSecond = settingsWindows();
+            check(afterSecond.size() == before + 1,
+                "the second open does not leave a deleted window behind, got "
+                    + std::to_string(afterSecond.size()) + " for "
+                    + std::to_string(before) + " before");
+            if (!afterSecond.isEmpty()) {
+                SettingsWindow* second = afterSecond.last();
+                check(second == first,
+                    "the same dialog is reused rather than a new one built");
+                check(second->isVisible(), "and it is shown");
+            }
+        }
+    }
 
     history.close();
 

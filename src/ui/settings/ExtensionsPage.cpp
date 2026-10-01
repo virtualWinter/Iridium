@@ -215,7 +215,8 @@ void ExtensionsPage::buildUi()
     splitLayout->setSpacing(16);
 
     m_list = new QListWidget(split);
-    m_list->setObjectName(QStringLiteral("extensionsList"));
+    m_list->setObjectName(QStringLiteral("settingsEntryList"));
+    m_list->setFrameShape(QFrame::NoFrame);
     m_list->setIconSize(QSize(kIconSize, kIconSize));
     m_list->setSpacing(2);
     m_list->setUniformItemSizes(false);

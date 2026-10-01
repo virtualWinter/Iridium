@@ -34,6 +34,13 @@ set(PROFILE_HISTORY_SOURCES
 # The extensions layer. WebKit's WebKitWebExtension types are non-functional in
 # the installed WPE build, so manifests, match patterns and content-script
 # injection are implemented here instead of delegating to the engine.
+# The styling and window chrome both top-level windows share. Kept out of
+# SETTINGS_UI_SOURCES because the browser window needs it too, and it is not a
+# settings source file.
+set(WINDOW_CHROME_SOURCES
+    src/ui/BrowserStyle.cpp
+)
+
 set(SETTINGS_UI_SOURCES
     src/ui/settings/AppearancePage.cpp
     src/ui/settings/GeneralPage.cpp
@@ -76,6 +83,7 @@ add_executable(iridium
     src/browser/Browser.cpp
     ${PROFILE_HISTORY_SOURCES}
     src/ui/MainWindow.cpp
+    ${WINDOW_CHROME_SOURCES}
     src/ui/decoration/decorationtheme.cpp
     src/ui/decoration/windowdecoration.cpp
     ${SETTINGS_UI_SOURCES}
@@ -205,6 +213,7 @@ if(BUILD_TESTING)
     add_executable(settings-test
         tests/settings_test.cpp
         src/ui/MainWindow.cpp
+        ${WINDOW_CHROME_SOURCES}
         src/browser/Browser.cpp
         ${EXTENSIONS_CORE_SOURCES}
         src/extensions/ExtensionApi.cpp
@@ -251,6 +260,7 @@ if(BUILD_TESTING)
     # The real MainWindow, so history is recorded by the shipping code path.
     target_sources(webview-history-test PRIVATE
         src/ui/MainWindow.cpp
+        ${WINDOW_CHROME_SOURCES}
         src/browser/Browser.cpp
         src/ui/decoration/decorationtheme.cpp
         src/ui/decoration/windowdecoration.cpp
@@ -279,6 +289,7 @@ if(BUILD_TESTING)
         tests/settings_window_categories_test.cpp)
     target_sources(settings-window-categories-test PRIVATE
         src/ui/MainWindow.cpp
+        ${WINDOW_CHROME_SOURCES}
         src/browser/Browser.cpp
         src/ui/decoration/decorationtheme.cpp
         src/ui/decoration/windowdecoration.cpp

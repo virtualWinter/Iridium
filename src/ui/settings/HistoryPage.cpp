@@ -1,8 +1,8 @@
 #include "ui/settings/HistoryPage.hpp"
 
 #include <QDateTime>
-#include <QDialogButtonBox>
 #include <QFont>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -74,7 +74,11 @@ HistoryPage::HistoryPage(HistoryStore& store, OpenUrlHandler openUrl, QWidget* p
     m_body = new QStackedWidget(this);
 
     m_list = new QListWidget(m_body);
-    m_list->setObjectName(QStringLiteral("extensionsList"));
+    // Its own object name rather than the extensions page's: sharing one meant the
+    // history list inherited the extension rows' 32px icons and 52px height
+    // delegate sizing, which it has no use for.
+    m_list->setObjectName(QStringLiteral("settingsEntryList"));
+    m_list->setFrameShape(QFrame::NoFrame);
     m_list->setSelectionMode(QAbstractItemView::SingleSelection);
     m_body->addWidget(m_list);
 

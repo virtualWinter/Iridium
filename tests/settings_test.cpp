@@ -13,6 +13,7 @@
 #include "extensions/ExtensionRegistry.hpp"
 #include "ui/settings/AppearancePage.hpp"
 #include "ui/settings/ExtensionsPage.hpp"
+#include "ui/settings/GeneralPage.hpp"
 #include "ui/settings/HistoryPage.hpp"
 #include "ui/settings/ProfilesPage.hpp"
 #include "ui/settings/SettingsStore.hpp"
@@ -122,7 +123,10 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
     registry.loadFrom(QDir::cleanPath(systemDir));
 
     iridium::ExtensionsPage page(registry);
-    auto* list = find<QListWidget>(&page, "extensionsList");
+    // The shared list styling, which the history page uses too. The extensions
+    // list used to have its own name, and the history list borrowed that one
+    // instead of getting its own; both now share settingsEntryList.
+    auto* list = find<QListWidget>(&page, "settingsEntryList");
     auto* filter = find<QLineEdit>(&page, "settingsSearch");
     check(list != nullptr, "extensions list exists");
     check(filter != nullptr, "filter field exists");
@@ -370,7 +374,7 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
 
         iridium::history::HistoryPage page(history,
             [](const QString&) {});
-        auto* list = find<QListWidget>(&page, "extensionsList");
+        auto* list = find<QListWidget>(&page, "settingsEntryList");
         auto* search = find<QLineEdit>(&page, "settingsSearch");
         check(list != nullptr, "the history list exists");
         check(search != nullptr, "the history search field exists");
@@ -567,6 +571,58 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
             "changing the combo persists the choice");
         check(store.forcedColorScheme().value_or(false),
             "changing the combo applies a forced override");
+        // "Follow system" is a choice in the combo, not a separate checkbox that
+        // is always on and cannot be changed. The old pane had both.
+        const int systemIndex = combo->findData(QStringLiteral("system"));
+        check(systemIndex >= 0, "following the system is offered as a choice");
+        combo->setCurrentIndex(systemIndex);
+        check(!store.forcedColorScheme().has_value(),
+            "choosing the system clears the forced override");
+    }
+
+    // --- general pane ----------------------------------------------------
+    // The fields write through as they change rather than on editingFinished,
+    // because editingFinished does not fire when the window is closed with
+    // Escape or its close button. Closing the window while a field has
+    // uncommitted text used to discard it silently, and this is the path that
+    // did it: type into the field, then close the window without focusing
+    // anything else first.
+    {
+        iridium::GeneralPage general;
+        auto* home = find<QLineEdit>(&general, "settingsSearch");
+        check(home != nullptr, "the homepage field exists");
+        if (home) {
+            home->setText(QStringLiteral("https://set-from-ui.test/"));
+            check(store.storedHomePage() == QStringLiteral("https://set-from-ui.test/"),
+                "typing a homepage stores it without needing focus to change");
+            check(store.homePage() == QStringLiteral("https://set-from-ui.test/"),
+                "and the effective homepage is the typed one");
+
+            // A homepage that is a phrase would be searched for in every new
+            // tab. Stored as typed, but the field says so, because the only
+            // symptom otherwise is a search engine opening where a home page
+            // should have been.
+            home->setText(QStringLiteral("not a url at all"));
+            check(store.storedHomePage() == QStringLiteral("not a url at all"),
+                "a phrase homepage is stored as typed");
+            auto* generalStatus = find<QLabel>(&general, "settingsStatus");
+            // isHidden() rather than isVisible(): the pane is never shown in
+            // this test, and isVisible() is false for a child of a hidden parent
+            // however the child itself is set. What matters here is that the
+            // label was told to show itself.
+            check(generalStatus && !generalStatus->isHidden()
+                    && generalStatus->text().contains(QStringLiteral("not a web address")),
+                "and the field reports that it would be searched for");
+            check(generalStatus
+                    && generalStatus->property("error").toBool(),
+                "reported as an error rather than a note");
+
+            // Clearing returns to the default rather than pinning a value.
+            home->setText(QString());
+            check(!store.hasCustomHomePage(), "clearing the field unconfigures it");
+            check(store.homePage() == iridium::SettingsStore::defaultHomePage(),
+                "and the effective homepage is the default again");
+        }
     }
 
     if (g_failures == 0)

@@ -1,5 +1,7 @@
 #include "ui/MainWindow.hpp"
 
+#include "ui/BrowserStyle.hpp"
+
 #include "browser/Browser.hpp"
 #include "browser/HistoryStore.hpp"
 #include "browser/ProfileManager.hpp"
@@ -22,6 +24,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -56,31 +59,6 @@ namespace {
 // browsing day from growing the table without limit.
 constexpr int kMaxHistoryEntries = 50000;
 constexpr int kHistoryRetentionDays = 90;
-
-class WindowDragHandle final : public QWidget {
-public:
-    using QWidget::QWidget;
-
-protected:
-    void mousePressEvent(QMouseEvent* event) override
-    {
-        if (event->button() == Qt::LeftButton)
-            m_origin = event->globalPosition().toPoint();
-    }
-
-    void mouseMoveEvent(QMouseEvent* event) override
-    {
-        if (!(event->buttons() & Qt::LeftButton)
-            || (event->globalPosition().toPoint() - m_origin).manhattanLength()
-                < QApplication::startDragDistance())
-            return;
-        if (window()->windowHandle())
-            window()->windowHandle()->startSystemMove();
-    }
-
-private:
-    QPoint m_origin;
-};
 
 class TabItemDelegate final : public QStyledItemDelegate {
 public:
@@ -178,32 +156,11 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
 {
     setWindowTitle("Iridium");
     resize(1200, 800);
-    setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlag(Qt::FramelessWindowHint, true);
-    qApp->installEventFilter(this);
-    const QString windowBackground = palette().color(QPalette::Window).name();
-    setStyleSheet(QStringLiteral(R"(
-        QWidget#browserRoot { background: %1; border-radius: 14px; }
-        QWidget#arcSidebar { background: %1; border-top-right-radius: 14px;
-            border-bottom-right-radius: 14px; }
-        QFrame#rendererFrame { border-width: 3px; border-right-width: 0px; border-style: solid;
-            border-color: %1; border-radius: 11px;
-            background: %1; }
-        QStackedWidget#rendererPages { background: palette(window); border-radius: 8px; }
-        QLabel#noTabsState { background: palette(base); border-radius: 8px;
-            color: palette(text); }
-        QListWidget { background: transparent; border: 0; outline: 0; }
-        QListWidget::item { color: palette(text); border-radius: 8px; padding: 8px 10px; margin: 2px 0; }
-        QListWidget::item:hover { background: palette(midlight); }
-        QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }
-        QLineEdit#addressBar { background: palette(base); border: 1px solid palette(mid);
-            border-radius: 16px; padding: 8px 12px; color: palette(text); }
-        QLineEdit#addressBar:focus { border-color: palette(highlight); }
-        QToolButton#chromeButton { border: 0; border-radius: 8px; padding: 7px; color: palette(button-text); }
-        QToolButton#chromeButton:hover { background: palette(midlight); }
-        QToolButton#sidebarAction { border: 0; border-radius: 8px; padding: 8px; color: palette(button-text); text-align: left; }
-        QToolButton#sidebarAction:hover { background: palette(midlight); }
-    )").arg(windowBackground));
+    // The shell, the drag region and edge resizing, and the stylesheet the
+    // settings window also uses. FramelessChrome owns the event filter, so this
+    // window no longer installs one itself.
+    m_chrome = std::make_unique<ui::FramelessChrome>(this);
+    setStyleSheet(ui::sharedStyleSheet(palette()));
 
     auto* root = new QWidget(this);
     root->setObjectName(QStringLiteral("browserRoot"));
@@ -251,7 +208,8 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
         ? makeDecorationGroup(DecorationTheme::Side::Left) : nullptr;
     QWidget* rightControls = hasRightControls
         ? makeDecorationGroup(DecorationTheme::Side::Right) : nullptr;
-    auto* dragHandle = new WindowDragHandle(header);
+    auto* dragHandle = m_chrome->dragHandle();
+    dragHandle->setParent(header);
     dragHandle->setMinimumWidth(8);
 
     m_backButton = makeChromeButton(QStringLiteral("Back"));
@@ -520,33 +478,6 @@ void MainWindow::applyColorScheme()
     }
 }
 
-bool MainWindow::eventFilter(QObject* watched, QEvent* event)
-{
-    if (event->type() != QEvent::MouseButtonPress || isMaximized())
-        return QMainWindow::eventFilter(watched, event);
-
-    auto* widget = qobject_cast<QWidget*>(watched);
-    auto* mouse = static_cast<QMouseEvent*>(event);
-    if (!widget || widget->window() != this || mouse->button() != Qt::LeftButton)
-        return QMainWindow::eventFilter(watched, event);
-
-    const QPoint position = mapFromGlobal(mouse->globalPosition().toPoint());
-    constexpr int resizeMargin = 8;
-    Qt::Edges edges;
-    if (position.x() < resizeMargin) edges |= Qt::LeftEdge;
-    else if (position.x() >= width() - resizeMargin) edges |= Qt::RightEdge;
-    if (position.y() < resizeMargin) edges |= Qt::TopEdge;
-    else if (position.y() >= height() - resizeMargin) edges |= Qt::BottomEdge;
-    if (!edges)
-        return QMainWindow::eventFilter(watched, event);
-
-    if (windowHandle() && windowHandle()->startSystemResize(edges)) {
-        event->accept();
-        return true;
-    }
-    return QMainWindow::eventFilter(watched, event);
-}
-
 // Tab ids handed to extensions. Derived from the view pointer rather than
 // stored, because the view is stable for a tab's lifetime and the pool reuses
 // views only after they leave the list.
@@ -707,11 +638,11 @@ void MainWindow::openHistory()
     if (!m_settingsWindow) {
         m_settingsWindow = new SettingsWindow(
             *this, *m_extensionRegistry, *m_history, this);
-        m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
     }
     // The history list lives in the same window as the other settings, so a
     // visitor opens once and can switch to extensions or preferences.
-    m_settingsWindow->selectCategory("history");
+    m_settingsWindow->selectCategory(
+        QString(SettingsWindow::historyCategory()));
     m_settingsWindow->show();
     m_settingsWindow->raise();
     m_settingsWindow->activateWindow();
@@ -721,9 +652,16 @@ void MainWindow::newTab()
 {
     // The command-line URL wins for the first tab only; afterwards the homepage
     // preference applies, so a configured start page is actually used.
+    //
+    // The homepage goes through resolveAddressInput, like anything else typed in
+    // the address bar. Without that, a homepage stored as "example.com" was
+    // handed to the engine verbatim, which cannot load a bare host, so a
+    // plausible setting did nothing visible.
     std::string uri = std::exchange(m_initialUrl, std::string());
-    if (uri.empty())
-        uri = SettingsStore::instance().homePage().toStdString();
+    if (uri.empty()) {
+        uri = SettingsStore::instance()
+            .resolveAddressInput(SettingsStore::instance().homePage()).toStdString();
+    }
     auto* view = m_browser.newTab();
     m_pages->addWidget(view->widget());
     m_views.append(view);
@@ -905,14 +843,18 @@ void MainWindow::pruneDownloadHistory()
 
 void MainWindow::openSettings()
 {
-    // Modeless-on-demand: the dialog is created on first use and reused, so the
-    // category selection and scroll position survive being closed and reopened.
-    if (!m_settingsWindow) {
+    // Modeless-on-demand: the dialog is created on first use and kept until the
+    // browser window goes away, so the category selection and scroll position
+    // survive being closed and reopened.
+    //
+    // It is deliberately NOT WA_DeleteOnClose. That attribute deletes the dialog
+    // on close, and this pointer is not cleared when it happens, so the second
+    // call would use a dangling pointer: the cached non-null check would pass
+    // and show() would run on freed memory. Parenting it to this window gives
+    // the same "no leak" outcome without the stale pointer.
+    if (!m_settingsWindow)
         m_settingsWindow = new SettingsWindow(
             *this, *m_extensionRegistry, *m_history, this);
-        // Destroyed with the browser window rather than leaking a top level.
-        m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
-    }
     m_settingsWindow->show();
     m_settingsWindow->raise();
     m_settingsWindow->activateWindow();
@@ -1009,6 +951,24 @@ void MainWindow::rebuildDownloadsMenu()
             rebuildDownloadsMenu();
         });
     }
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    // The setting says "several tabs", so one tab is not several and is not
+    // worth interrupting anyone over.
+    if (m_views.size() > 1
+        && SettingsStore::instance().confirmBeforeClosingTabs()) {
+        const auto answer = QMessageBox::question(this, tr("Close window"),
+            tr("Close this window and its %n tab(s)?", "", int(m_views.size())),
+            QMessageBox::Close | QMessageBox::Cancel, QMessageBox::Cancel);
+        if (answer != QMessageBox::Close) {
+            // Ignored rather than accepted: the window stays open.
+            event->ignore();
+            return;
+        }
+    }
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::updateDecorationState()
