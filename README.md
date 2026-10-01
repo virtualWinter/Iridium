@@ -29,25 +29,62 @@ Everything the build needs is listed here. Nothing else is required: there is no
 submodule to fetch, no code generator to run by hand and no system component
 Iridium downloads at configure time.
 
+The package names in the last column are the ones that provide the files the
+build actually opens, verified against the packages this project was developed
+on. On another distribution the names differ; the Component column gives the
+distro-independent identifier to search for.
+
+**Installing on Arch**
+
+```sh
+sudo pacman -S --needed \
+    cmake ninja gcc pkgconf \
+    qt6-base qt6-svg \
+    ksvg \
+    wpewebkit wpebackend-fdo wayland libglvnd \
+    gstreamer gst-plugins-good gst-plugins-bad gst-libav gst-plugin-va
+```
+
+Add `python python-yaml` if you also want the documentation tooling to run; see
+the last table.
+
+**Installing on another distribution**
+
+The build asks `pkg-config` and CMake for these identifiers, so the packages to
+look for are the ones that provide them:
+
+| Identifier the build asks for | Provides |
+| --- | --- |
+| `wpe-webkit-2.0`, `wpe-platform-2.0` | WPE WebKit and the platform abstraction |
+| `wpebackend-fdo-1.0` | The FDO embedding backend |
+| `wayland-server` | The Wayland server library the backend links |
+| `egl`, `glesv2` | The GL loader's development files |
+| `Qt6Widgets`, `Qt6Network`, `Qt6Sql`, `Qt6Test` | Qt 6 base |
+| `Qt6Svg` | Qt 6 SVG |
+| `KF6Svg` | KDE Frameworks 6 SVG |
+
 **Toolchain**
 
-| Dependency | Why | Arch package |
+| Component | Why | Arch package |
 | --- | --- | --- |
-| CMake 3.21 or newer | Build system | `cmake` |
+| CMake 3.21 or newer | The build system | `cmake` |
 | Ninja | The build generator the commands above use | `ninja` |
-| A C++20 compiler | GCC 12+ or Clang 16+ | `gcc` |
-| pkg-config | Locates the WPE and GLES libraries | `pkgconf` |
+| A C++20 compiler | `CMAKE_CXX_STANDARD 20`; the reference build uses GCC 16 | `gcc` |
+| pkg-config | Locates WPE and the GL loader | `pkgconf` |
 
 **Qt 6**
 
 | Component | Why | Arch package |
 | --- | --- | --- |
-| QtCore, QtGui, QtWidgets | The window, sidebar and panels | `qt6-base` |
+| QtCore, QtGui, QtWidgets | The window, sidebars and panels | `qt6-base` |
 | QtNetwork | Extension update checks over HTTP | `qt6-base` |
 | QtSql | Per-profile history and extension storage | `qt6-base` |
-| QtSvg | Icons in the tab list and window decoration | `qt6-svg` |
 | QtTest | `QSignalSpy` in the widget tests | `qt6-base` |
-| The Wayland platform plugin | Running on a Wayland session | `qt6-wayland` |
+| QtSvg | Icons in the tab list and window decoration | `qt6-svg` |
+
+The Wayland platform plugin and the SQLite driver both ship inside `qt6-base`;
+they are not separate packages. (`qt6-wayland` is the QtWayland *compositor*
+library and is not needed here.)
 
 **KDE Frameworks 6**
 
@@ -62,10 +99,13 @@ Iridium downloads at configure time.
 | WPE WebKit 2.52 | The web engine | `wpewebkit` |
 | WPE Platform 2 | Display, view and buffer abstraction | `wpewebkit` |
 | The FDO embedding backend | The backend this WebKit's public embedding API still requests; see [docs/wpe-integration.md](docs/wpe-integration.md) | `wpebackend-fdo` |
-| libwayland | Wayland server library the backend links | `wayland` |
-| EGL, GLESv2, GL, GLX, OpenGL | Hardware-accelerated frame presentation | `mesa`, `libglvnd` |
+| libwayland | `wayland-server.pc`, needed to build against the backend | `wayland` |
+| libglvnd | The EGL, GLESv2, GL, GLX and OpenGL development files the browser links | `libglvnd` |
 
-**Media playback (needed for audio and video)**
+**Media playback**
+
+Needed at runtime for audio and video. `wpewebkit` does not depend on any of
+them, so they must be installed explicitly.
 
 | Component | Why | Arch package |
 | --- | --- | --- |
@@ -75,13 +115,9 @@ Iridium downloads at configure time.
 | gst-libav | H.264 and AAC decoders; without them YouTube and similar sites report that the browser cannot play video | `gst-libav` |
 | VA-API plugin | GPU video decoding | `gst-plugin-va` |
 
-`wpewebkit` does not depend on any of the GStreamer packages, so they have to be
-installed explicitly. On Debian and Fedora the package names differ but the set
-is the same.
-
 **Optional, for the documentation tooling**
 
-| Dependency | Why | Arch package |
+| Component | Why | Arch package |
 | --- | --- | --- |
 | Python 3 | Runs the two documentation tests | `python` |
 | PyYAML | Read by the coverage-database checker | `python-yaml` |
@@ -93,8 +129,12 @@ regenerate `docs/extensions/` after changing the specification pins.
 ### Runtime notes
 
 - The Qt SQLite driver must be present at runtime; browsing history and
-  extension storage depend on it. If it is missing, browsing still works and
-  history reports the problem once on stderr instead of being written.
+  extension storage depend on it. It ships inside `qt6-base`. If it is missing,
+  browsing still works and history reports the problem once on stderr instead of
+  being written.
+- `mesa` provides the GL driver. It is not needed to build — only `libglvnd` is,
+  since that is what supplies the libraries the browser links — but a Wayland
+  session needs a driver to present anything.
 - Rendering uses the GPU through the FDO backend by default, reading the frame
   back into the Qt widget. Set `IRIDIUM_DISABLE_GPU_PRESENTATION=1` to force
   the software SHM fallback.
