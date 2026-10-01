@@ -157,8 +157,10 @@ history pane and Ctrl+, opens settings, which manages extensions and profiles.
 
 Settings is a frameless window with the same rounded shell, palette, window
 controls and drag region as the browser window. Its category rail is on the
-left; window controls remain at the top-right. Preferences take effect as they
-are changed — there is no Apply — and the homepage and search address both
+left; window controls share the top-right corner of the pane heading rather
+than reserving a title-bar row. Navigation and content start at the top edge.
+Preferences take effect as they are changed — there is no Apply — and the
+homepage and search address both
 offer a reset to the built-in default. A homepage that is not a web address is
 reported where it is typed, because the alternative is a search engine opening
 in every new tab with nothing on screen to say why.

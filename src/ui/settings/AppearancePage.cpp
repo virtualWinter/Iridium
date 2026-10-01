@@ -28,6 +28,7 @@ AppearancePage::AppearancePage(QWidget* parent)
     root->setSpacing(12);
 
     auto* heading = new QLabel(tr("Appearance"), this);
+    heading->setObjectName(QStringLiteral("settingsHeading"));
     QFont headingFont = heading->font();
     headingFont.setPointSizeF(headingFont.pointSizeF() * 1.6);
     headingFont.setBold(true);

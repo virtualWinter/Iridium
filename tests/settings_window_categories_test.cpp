@@ -17,11 +17,15 @@
 #include "ui/settings/HistoryPage.hpp"
 #include "ui/settings/SettingsWindow.hpp"
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFrame>
+#include <QImage>
+#include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QSet>
@@ -49,6 +53,29 @@ void check(bool condition, const std::string& what)
         std::printf("FAIL: %s\n", what.c_str());
         ++g_failures;
     }
+}
+
+bool controlPaintedIn(const QImage& windowImage, SettingsWindow& settings,
+    QAbstractButton* button)
+{
+    const QImage expected = button->grab().toImage();
+    const QPoint at = button->mapTo(&settings, QPoint());
+    const QPoint pixelAt(qRound(at.x() * windowImage.devicePixelRatio()),
+        qRound(at.y() * windowImage.devicePixelRatio()));
+    const QColor background = settings.palette().color(QPalette::Active, QPalette::Window);
+    int ink = 0;
+    int matchingInk = 0;
+    for (int y = 0; y < expected.height(); ++y) {
+        for (int x = 0; x < expected.width(); ++x) {
+            const QColor color = expected.pixelColor(x, y);
+            if (color.alpha() == 0 || color == background)
+                continue;
+            ++ink;
+            if (windowImage.pixelColor(pixelAt.x() + x, pixelAt.y() + y) == color)
+                ++matchingInk;
+        }
+    }
+    return ink > 0 && matchingInk >= ink * 0.9;
 }
 
 } // namespace
@@ -163,7 +190,8 @@ int main(int argc, char** argv)
     check(settings.findChild<QWidget*>(QStringLiteral("settingsCategories")) != nullptr,
         "the category rail exists and is named for the shared stylesheet");
 
-    // Categories belong on the left, but the controls must stay top-right.
+    // Categories and all panes start at the top, without a reserved title-bar
+    // row. The controls occupy only the pane heading's top-right corner.
     // Measure after show(): before layout activation, child positions are not
     // meaningful and cannot catch an incorrectly placed rail or header.
     auto* decoration = settings.findChild<WindowDecoration*>();
@@ -179,43 +207,108 @@ int main(int argc, char** argv)
     app.processEvents();
 
     if (decoration) {
-        auto* header = decoration->parentWidget();
+        auto* corner = decoration->parentWidget();
         auto* rail = settings.findChild<QWidget*>(QStringLiteral("settingsCategories"));
         auto* content = settings.findChild<QFrame*>(QStringLiteral("settingsContent"));
         auto* list = settings.findChild<QListWidget*>(
             QStringLiteral("settingsCategoryList"));
-        check(header && header == settings.findChild<QWidget*>(QStringLiteral("settingsHeader")),
-            "the controls are parented to the independent window header");
+        check(corner && corner == settings.findChild<QWidget*>(QStringLiteral("settingsControls")),
+            "the controls are parented to the compact corner overlay");
+        check(settings.findChild<QWidget*>(QStringLiteral("settingsHeader")) == nullptr,
+            "there is no separate window header row");
         check(rail != nullptr, "the category rail exists");
         check(content != nullptr, "the settings content exists");
         check(list != nullptr, "the category list exists");
 
-        if (header && rail && content && list && panes) {
+        if (corner && rail && content && list && panes) {
             for (const QSize size : { QSize(880, 600), QSize(680, 480), QSize(1100, 760) }) {
                 settings.resize(size);
                 app.processEvents();
-                const QPoint headerAt = header->mapTo(&settings, QPoint());
+                const QPoint cornerAt = corner->mapTo(&settings, QPoint());
                 const QPoint listAt = list->mapTo(&settings, QPoint());
                 const QPoint controlsAt = decoration->mapTo(&settings, QPoint());
                 const QPoint railAt = rail->mapTo(&settings, QPoint());
                 const QPoint contentAt = content->mapTo(&settings, QPoint());
                 const QPoint panesAt = panes->mapTo(&settings, QPoint());
 
-                check(railAt.x() == 0 && rail->width() == 200,
+                check(railAt == QPoint() && rail->width() == 200
+                        && rail->height() == settings.height(),
                     "the settings categories stay against the left edge after resizing");
                 check(contentAt.x() == railAt.x() + rail->width()
-                        && contentAt.x() + content->width() == settings.width(),
+                        && contentAt.x() + content->width() == settings.width()
+                        && contentAt.y() == 0 && content->height() == settings.height(),
                     "the settings content fills the space to the right of the categories");
-                check(headerAt == QPoint() && header->width() == settings.width(),
-                    "the window header is independent of the category rail");
+                check(listAt.y() == 10 && panesAt.y() < 20,
+                    "navigation and panes use top padding, not a title-bar offset");
+                check(cornerAt.y() == 0 && cornerAt.x() + corner->width() == settings.width()
+                        && corner->width() < content->width(),
+                    "only the unused top-right corner is occupied by window chrome");
                 check(!rail->isAncestorOf(decoration),
                     "moving the categories cannot move the window controls");
                 check(controlsAt.y() == 6
                         && settings.width() - controlsAt.x() - decoration->width() == 8,
                     "the window controls keep their existing top-right insets");
-                check(headerAt.y() + header->height() <= listAt.y()
-                        && headerAt.y() + header->height() <= panesAt.y(),
-                    "categories and content stay below the window controls");
+                auto* dragHandle = corner->findChild<QWidget*>(QStringLiteral("settingsDragHandle"));
+                check(dragHandle && settings.childAt(dragHandle->mapTo(&settings,
+                        dragHandle->rect().center())) == dragHandle,
+                    "the corner still has an accessible drag region");
+                for (auto* button : decoration->findChildren<QAbstractButton*>()) {
+                    check(settings.childAt(button->mapTo(&settings, button->rect().center())) == button,
+                        "content does not cover the window controls' hit targets");
+                }
+
+                const QPoint firstCategory = list->viewport()->mapTo(&settings,
+                    list->visualItemRect(list->item(0)).center());
+                check(settings.childAt(firstCategory) == list->viewport(),
+                    "the top category remains clickable, not covered by a drag overlay");
+
+                for (const QString& category : categories) {
+                    settings.selectCategory(category);
+                    app.processEvents();
+                    const QImage rendered = settings.grab().toImage();
+                    check(decoration->isVisible() && decoration->height() > 0,
+                        category.toStdString() + " keeps the window controls visible");
+                    const QPoint currentControlsAt = decoration->mapTo(&settings, QPoint());
+                    check(currentControlsAt.y() == 6
+                            && settings.width() - currentControlsAt.x() - decoration->width() == 8,
+                        category.toStdString() + " keeps the controls at the same top-right position");
+                    check(!decoration->findChildren<QAbstractButton*>().isEmpty(),
+                        category.toStdString() + " has actual window-control buttons");
+                    for (auto* button : decoration->findChildren<QAbstractButton*>()) {
+                        check(settings.childAt(button->mapTo(&settings, button->rect().center())) == button,
+                            category.toStdString() + " keeps window-control hit targets above the pane");
+                        check(controlPaintedIn(rendered, settings, button),
+                            category.toStdString() + " renders the window-control artwork above the pane");
+                    }
+                    auto* page = panes->currentWidget();
+                    auto* heading = page->findChild<QLabel*>(QStringLiteral("settingsHeading"),
+                        Qt::FindDirectChildrenOnly);
+                    check(heading != nullptr, category.toStdString() + " has a pane heading");
+                    if (!heading)
+                        continue;
+                    check(heading->mapTo(&settings, QPoint()).y() == panesAt.y(),
+                        category.toStdString() + " starts its heading at the top of the pane");
+                    const QRect textArea(heading->mapTo(&settings, heading->contentsRect().topLeft()),
+                        heading->contentsRect().size());
+                    check(textArea.right() < cornerAt.x()
+                            && textArea.width() >= heading->fontMetrics().horizontalAdvance(heading->text()),
+                        category.toStdString() + " keeps its title clear of the corner controls");
+                    auto* firstBodyItem = page->layout()->itemAt(1);
+                    check(firstBodyItem != nullptr, category.toStdString() + " has content below its heading");
+                    if (firstBodyItem) {
+                        const QPoint firstBodyAt = page->mapTo(&settings,
+                            firstBodyItem->geometry().topLeft());
+                        check(firstBodyAt.y() >= cornerAt.y() + corner->height(),
+                            category.toStdString() + " keeps fields and subtitles clear of the controls");
+                    }
+                    if (argc > 1 && size == QSize(880, 600)) {
+                        const QString directory = QString::fromLocal8Bit(argv[1]);
+                        check(QDir().mkpath(directory), "the settings screenshot directory exists");
+                        check(rendered.save(directory
+                                + QStringLiteral("/settings-%1-compact.png").arg(category)),
+                            category.toStdString() + " compact layout screenshot is saved");
+                    }
+                }
             }
 
             settings.resize(880, 600);

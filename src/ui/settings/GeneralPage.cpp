@@ -26,6 +26,7 @@ namespace {
 QLabel* makeHeading(const QString& text, QWidget* parent)
 {
     auto* heading = new QLabel(text, parent);
+    heading->setObjectName(QStringLiteral("settingsHeading"));
     QFont font = heading->font();
     font.setPointSizeF(font.pointSizeF() * 1.6);
     font.setBold(true);

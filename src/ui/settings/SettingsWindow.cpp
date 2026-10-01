@@ -11,6 +11,7 @@
 #include "ui/settings/ProfilesPage.hpp"
 
 #include <QFrame>
+#include <QGridLayout>
 #include <QGuiApplication>
 #include <QHideEvent>
 #include <QHBoxLayout>
@@ -27,6 +28,8 @@ namespace iridium {
 namespace {
 // A real role, not UserRole+n: item data is keyed by int.
 constexpr int kCategoryRole = Qt::UserRole + 100;
+constexpr int kCornerControlsWidth = 200;
+constexpr int kContentTopMargin = 12;
 } // namespace
 
 SettingsWindow::SettingsWindow(MainWindow& window, extensions::ExtensionRegistry& registry,
@@ -61,28 +64,14 @@ void SettingsWindow::buildUi()
     // rounded background on, so it is not the dialog itself.
     auto* root = new QWidget(this);
     root->setObjectName(QStringLiteral("settingsRoot"));
-    auto* rootLayout = new QVBoxLayout(root);
+    auto* rootLayout = new QGridLayout(root);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
-
-    // Keep the window controls at their existing top-right inset, independently
-    // of which edge holds the categories.
-    auto* header = new QWidget(root);
-    header->setObjectName(QStringLiteral("settingsHeader"));
-    auto* headerLayout = new QHBoxLayout(header);
-    headerLayout->setContentsMargins(8, 6, 8, 0);
-    headerLayout->setSpacing(4);
-    auto* dragHandle = m_chrome->dragHandle();
-    dragHandle->setParent(header);
-    dragHandle->setMinimumWidth(8);
-    headerLayout->addWidget(dragHandle, 1);
-    addWindowControls(headerLayout);
-    rootLayout->addWidget(header);
 
     auto* bodyLayout = new QHBoxLayout;
     bodyLayout->setContentsMargins(0, 0, 0, 0);
     bodyLayout->setSpacing(0);
-    rootLayout->addLayout(bodyLayout, 1);
+    rootLayout->addLayout(bodyLayout, 0, 0);
 
     // Settings navigation is on the left; the browser's tab sidebar stays right.
     auto* rail = new QWidget(root);
@@ -110,7 +99,7 @@ void SettingsWindow::buildUi()
     auto* content = new QFrame(root);
     content->setObjectName(QStringLiteral("settingsContent"));
     auto* contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(14, 12, 14, 14);
+    contentLayout->setContentsMargins(14, kContentTopMargin, 14, 14);
     contentLayout->setSpacing(0);
 
     m_panes = new QStackedWidget(content);
@@ -118,9 +107,26 @@ void SettingsWindow::buildUi()
     contentLayout->addWidget(m_panes, 1);
     bodyLayout->addWidget(content, 1);
 
-    // A QDialog's own layout would centre this on top of the shell margins;
-    // the shell is the dialog's whole content, so the margins are zero and the
-    // rail's own margins do the spacing.
+    // Overlay only the unused top-right corner of the existing pane heading.
+    // Sharing the body's grid cell keeps both columns full-height: there is no
+    // extra header row pushing navigation, headings and fields down.
+    m_cornerControls = new QWidget(root);
+    m_cornerControls->setObjectName(QStringLiteral("settingsControls"));
+    m_cornerControls->setMinimumWidth(kCornerControlsWidth);
+    m_cornerControls->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    auto* controlsLayout = new QHBoxLayout(m_cornerControls);
+    controlsLayout->setContentsMargins(8, 6, 8, 0);
+    controlsLayout->setSpacing(4);
+    auto* dragHandle = m_chrome->dragHandle();
+    dragHandle->setObjectName(QStringLiteral("settingsDragHandle"));
+    dragHandle->setParent(m_cornerControls);
+    dragHandle->setMinimumWidth(8);
+    controlsLayout->addWidget(dragHandle, 1);
+    addWindowControls(controlsLayout);
+    rootLayout->addWidget(m_cornerControls, 0, 0, Qt::AlignTop | Qt::AlignRight);
+    m_cornerControls->raise();
+
+    // The shell fills the dialog; only the rail and panes supply inner padding.
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
     outer->setSpacing(0);
@@ -167,6 +173,8 @@ void SettingsWindow::buildUi()
     m_paneForCategory.insert(profilesCategory(), m_profilesPage);
     m_panes->addWidget(m_profilesPage);
 
+    updateHeadingInsets();
+
     // Ctrl+W and Escape both close, matching the rest of the browser. Escape is
     // a QDialog default; the shortcut is here because the frameless window no
     // longer has a title-bar close button to fall back on.
@@ -181,7 +189,7 @@ void SettingsWindow::addWindowControls(QLayout* layout)
     const auto& theme = DecorationTheme::system();
 
     // The right-hand set, falling back to the left: a theme may put its controls
-    // on either side, and the header has room for either.
+    // on either side, and the corner has room for either.
     const DecorationTheme::Side side =
         theme.buttons(DecorationTheme::Side::Right).isEmpty()
         ? DecorationTheme::Side::Left : DecorationTheme::Side::Right;
@@ -218,6 +226,7 @@ void SettingsWindow::selectCategory(const QString& id)
 void SettingsWindow::showEvent(QShowEvent* event)
 {
     QDialog::showEvent(event);
+    updateHeadingInsets();
     // Every page reads live state that changes while this window is closed, and
     // none of them holds a copy of it. Reloading all of them is what keeps a
     // setting changed elsewhere from showing its old value here.
@@ -236,6 +245,28 @@ void SettingsWindow::updateDecorationState()
     for (auto* decoration : m_decorations) {
         decoration->setWindowActive(isActiveWindow());
         decoration->setMaximized(isMaximized());
+    }
+    updateHeadingInsets();
+}
+
+void SettingsWindow::updateHeadingInsets()
+{
+    if (!m_cornerControls || !m_panes)
+        return;
+
+    m_cornerControls->layout()->activate();
+    const QSize cornerSize = m_cornerControls->sizeHint()
+        .expandedTo(QSize(kCornerControlsWidth, 0));
+    for (int index = 0; index < m_panes->count(); ++index) {
+        auto* heading = m_panes->widget(index)->findChild<QLabel*>(
+            QStringLiteral("settingsHeading"), Qt::FindDirectChildrenOnly);
+        if (!heading)
+            continue;
+        // Reserve horizontal space in the heading only, not in the form below.
+        // Tall decoration themes grow that existing row just enough to keep the
+        // first field or subtitle clear of the controls.
+        heading->setContentsMargins(0, 0, cornerSize.width(), 0);
+        heading->setMinimumHeight(qMax(0, cornerSize.height() - kContentTopMargin));
     }
 }
 

@@ -31,7 +31,7 @@ class AppearancePage;
 class ProfilesPage;
 
 // The settings dialog: a category rail on the left, one pane on the right.
-// Window controls stay in a separate top-right header.
+// Window controls share the pane heading's top-right corner, without a title bar.
 //
 // Built as a QDialog rather than a second top-level window so it stays modal to
 // the browser window, gets the right parent for the taskbar, and is closed by
@@ -69,11 +69,12 @@ protected:
 private:
     void buildUi();
     void selectCategoryByIndex(int index);
-    // The window controls, added to `layout` in the top-right header. A frameless
+    // The window controls, added to `layout` in the top-right corner. A frameless
     // window has no title bar, so without these there is no way to dismiss it
     // except Escape.
     void addWindowControls(QLayout* layout);
     void updateDecorationState();
+    void updateHeadingInsets();
 
     MainWindow& m_window;
     extensions::ExtensionRegistry& m_registry;
@@ -86,6 +87,7 @@ private:
     ProfilesPage* m_profilesPage { nullptr };
     GeneralPage* m_generalPage { nullptr };
     AppearancePage* m_appearancePage { nullptr };
+    QWidget* m_cornerControls { nullptr };
     QListWidget* m_categories { nullptr };
     QStackedWidget* m_panes { nullptr };
     QHash<QString, QWidget*> m_paneForCategory;

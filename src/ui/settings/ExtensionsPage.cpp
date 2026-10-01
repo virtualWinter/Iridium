@@ -166,6 +166,7 @@ void ExtensionsPage::buildUi()
     root->setSpacing(12);
 
     auto* heading = new QLabel(tr("Extensions"), this);
+    heading->setObjectName(QStringLiteral("settingsHeading"));
     QFont headingFont = heading->font();
     headingFont.setPointSizeF(headingFont.pointSizeF() * 1.6);
     headingFont.setBold(true);
