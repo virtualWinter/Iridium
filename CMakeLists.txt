@@ -135,6 +135,10 @@ if(BUILD_TESTING)
         add_test(NAME extensions-coverage
             COMMAND ${Python3_EXECUTABLE} tools/webext/coverage.py --check
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        # coverage.py exits 77 when PyYAML is absent, which CTest reads as a skip:
+        # the documentation check is a developer convenience, not a reason for
+        # someone building the browser to fail their test run.
+        set_tests_properties(extensions-coverage PROPERTIES SKIP_RETURN_CODE 77)
         # The C++ catalog is generated from the same inventory, so a refreshed
         # inventory cannot leave stale generated code behind.
         add_test(NAME extensions-codegen

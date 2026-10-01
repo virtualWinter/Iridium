@@ -39,10 +39,13 @@ from typing import Any
 
 try:
     import yaml
-except ImportError:  # pragma: no cover - developer tooling, reported clearly
-    print("tools/webext/coverage.py needs PyYAML (python3 -m pip install pyyaml)",
-          file=sys.stderr)
-    raise SystemExit(2)
+except ImportError:
+    # Exit 77 is CTest's "skipped". Someone who only wants to build and run the
+    # browser should not have to install a Python module to get a green test
+    # run, and a missing dependency should not look like a broken database.
+    print("tools/webext/coverage.py needs PyYAML "
+          "(python3 -m pip install pyyaml); skipping")
+    raise SystemExit(77)
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs" / "extensions"
