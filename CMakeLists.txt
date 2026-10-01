@@ -301,6 +301,20 @@ if(BUILD_TESTING)
         PkgConfig::WPE PkgConfig::WPE_FDO PkgConfig::WAYLAND_SERVER
         PkgConfig::EGL PkgConfig::GLES)
 
+    iridium_add_webview_test(vertical-tabs-test vertical-tabs
+        tests/vertical_tabs_test.cpp Qt6::Test)
+    target_sources(vertical-tabs-test PRIVATE
+        src/ui/MainWindow.cpp
+        ${WINDOW_CHROME_SOURCES}
+        src/browser/Browser.cpp
+        src/ui/decoration/decorationtheme.cpp
+        src/ui/decoration/windowdecoration.cpp
+        ${PROFILE_HISTORY_SOURCES}
+        ${SETTINGS_UI_SOURCES}
+        ${EXTENSIONS_WEBKIT_SOURCES})
+    target_link_libraries(vertical-tabs-test PRIVATE
+        KF6::Svg Qt6::Network Qt6::Sql Qt6::Svg)
+
     # The settings store is profile-scoped, so it needs a profile to be pointed
     # at before it will read or write anything.
     add_executable(settings-store-test

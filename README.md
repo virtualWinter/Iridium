@@ -145,6 +145,9 @@ regenerate `docs/extensions/` after changing the specification pins.
 The window uses a full-sidebar layout inspired by Zen: the tab list, navigation
 buttons, address field and window controls sit in a sidebar against the right
 edge while the page occupies the rest.
+Tabs sit directly on the sidebar, without a separate inset panel. Compact rows
+keep favicons, elided titles and close controls aligned; tabs can be dragged to
+reorder them.
 
 Passing a URL opens it in the first tab. Ctrl+T opens another, Ctrl+H opens the
 history pane and Ctrl+, opens settings, which manages extensions and profiles.
@@ -188,6 +191,7 @@ offscreen Qt platform and skip themselves when neither is available:
 | `webview-extension` | A content script from a real on-disk extension running in a matching page |
 | `extensions-manifest`, `extensions-registry`, `extensions-paths`, `extensions-api`, `extensions-dispatcher` | Manifest parsing, match patterns, install and enable, the API surface, the dispatcher |
 | `settings`, `settings-window-categories`, `settings-store` | The settings panes and window, the store's defaults, address resolution and per-profile isolation |
+| `vertical-tabs` | Sidebar rendering in light/dark palettes, row geometry, tab creation, selection, reordering and closing |
 | `browser-data` | Profiles and history storage |
 | `extensions-coverage`, `extensions-codegen` | The generated specification inventory has not drifted from the documentation |
 

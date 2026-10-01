@@ -60,6 +60,11 @@ namespace {
 constexpr int kMaxHistoryEntries = 50000;
 constexpr int kHistoryRetentionDays = 90;
 
+QRect tabCloseRect(const QRect& row)
+{
+    return QRect(row.right() - 27, row.center().y() - 12, 24, 24);
+}
+
 class TabItemDelegate final : public QStyledItemDelegate {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
@@ -67,21 +72,19 @@ public:
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
         const QModelIndex& index) const override
     {
-        QStyleOptionViewItem itemOption(option);
-        const int textWidth = qMax(0, option.rect.width() - 62);
-        itemOption.text = option.fontMetrics.elidedText(
-            index.data(Qt::DisplayRole).toString(), Qt::ElideRight, textWidth);
-        QStyledItemDelegate::paint(painter, itemOption, index);
+        // The item padding reserves the close-button space; the style handles
+        // favicon placement and title elision within the remaining width.
+        QStyledItemDelegate::paint(painter, option, index);
 
-        const int centerX = option.rect.right() - 15;
-        const int centerY = option.rect.center().y();
+        const QPoint center = tabCloseRect(option.rect).center();
         const QColor color = option.state.testFlag(QStyle::State_Selected)
             ? option.palette.color(QPalette::HighlightedText)
             : option.palette.color(QPalette::Text);
         painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
         painter->setPen(QPen(color, 1.5, Qt::SolidLine, Qt::RoundCap));
-        painter->drawLine(QPoint(centerX - 3, centerY - 3), QPoint(centerX + 3, centerY + 3));
-        painter->drawLine(QPoint(centerX + 3, centerY - 3), QPoint(centerX - 3, centerY + 3));
+        painter->drawLine(center + QPoint(-3, -3), center + QPoint(3, 3));
+        painter->drawLine(center + QPoint(3, -3), center + QPoint(-3, 3));
         painter->restore();
     }
 };
@@ -96,7 +99,8 @@ protected:
     {
         const QModelIndex index = indexAt(event->position().toPoint());
         if (event->button() == Qt::LeftButton && index.isValid()
-            && event->position().x() >= visualItemRect(item(index.row())).right() - 30) {
+            && tabCloseRect(visualItemRect(item(index.row())))
+                   .contains(event->position().toPoint())) {
             if (closeRequested)
                 closeRequested(index.row());
             event->accept();
@@ -175,74 +179,56 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     sidebarLayout->setContentsMargins(8, 3, 8, 12);
     sidebarLayout->setSpacing(10);
 
-    const auto& theme = DecorationTheme::system();
     auto* header = new QWidget(sidebar);
+    header->setObjectName(QStringLiteral("sidebarHeader"));
     auto* headerLayout = new QHBoxLayout(header);
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(4);
-    auto makeChromeButton = [header](const QString& tooltip) {
-        auto* button = new QToolButton(header);
-        button->setObjectName(QStringLiteral("chromeButton"));
-        button->setToolTip(tooltip);
-        button->setFixedSize(30, 30);
-        return button;
-    };
-    auto makeDecorationGroup = [this, &theme, header](DecorationTheme::Side side) {
-        auto* group = new QWidget(header);
-        auto* groupLayout = new QHBoxLayout(group);
-        groupLayout->setContentsMargins(0, 0, 0, 0);
-        groupLayout->setSpacing(theme.buttonSpacing());
-        auto* decoration = new WindowDecoration(side, group);
-        groupLayout->addWidget(decoration);
+
+    // Decoration widgets already lay out their own buttons. Keep them and the
+    // navigation buttons directly in the header, without grouping containers.
+    const auto addDecoration = [this, header](DecorationTheme::Side side) -> WindowDecoration* {
+        if (DecorationTheme::system().buttons(side).isEmpty())
+            return nullptr;
+        auto* decoration = new WindowDecoration(side, header);
         m_decorations.append(decoration);
-        connect(decoration, &WindowDecoration::minimizeRequested, this, &QWidget::showMinimized);
+        connect(decoration, &WindowDecoration::minimizeRequested,
+            this, &QWidget::showMinimized);
         connect(decoration, &WindowDecoration::maximizeRestoreRequested, this, [this] {
             isMaximized() ? showNormal() : showMaximized();
         });
         connect(decoration, &WindowDecoration::closeRequested, this, &QWidget::close);
-        return group;
+        decoration->setWindowActive(isActiveWindow());
+        decoration->setMaximized(isMaximized());
+        return decoration;
     };
-    const bool hasLeftControls = !theme.buttons(DecorationTheme::Side::Left).isEmpty();
-    const bool hasRightControls = !theme.buttons(DecorationTheme::Side::Right).isEmpty();
-    QWidget* leftControls = hasLeftControls
-        ? makeDecorationGroup(DecorationTheme::Side::Left) : nullptr;
-    QWidget* rightControls = hasRightControls
-        ? makeDecorationGroup(DecorationTheme::Side::Right) : nullptr;
+
+    if (auto* left = addDecoration(DecorationTheme::Side::Left))
+        headerLayout->addWidget(left);
+
+    auto makeNavigationButton = [this, header](const QString& tooltip, QStyle::StandardPixmap icon) {
+        auto* button = new QToolButton(header);
+        button->setObjectName(QStringLiteral("chromeButton"));
+        button->setToolTip(tooltip);
+        button->setFixedSize(30, 30);
+        button->setIcon(style()->standardIcon(icon));
+        return button;
+    };
+    m_backButton = makeNavigationButton(QStringLiteral("Back"), QStyle::SP_ArrowBack);
+    m_forwardButton = makeNavigationButton(QStringLiteral("Forward"), QStyle::SP_ArrowForward);
+    m_reloadButton = makeNavigationButton(QStringLiteral("Reload"), QStyle::SP_BrowserReload);
+    headerLayout->addWidget(m_backButton);
+    headerLayout->addWidget(m_forwardButton);
+    headerLayout->addWidget(m_reloadButton);
+
     auto* dragHandle = m_chrome->dragHandle();
     dragHandle->setParent(header);
     dragHandle->setMinimumWidth(8);
+    headerLayout->addWidget(dragHandle, 1);
 
-    m_backButton = makeChromeButton(QStringLiteral("Back"));
-    m_backButton->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
-    m_forwardButton = makeChromeButton(QStringLiteral("Forward"));
-    m_forwardButton->setIcon(style()->standardIcon(QStyle::SP_ArrowForward));
-    m_reloadButton = makeChromeButton(QStringLiteral("Reload"));
-    m_reloadButton->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
-    auto* navigationControls = new QWidget(header);
-    auto* navigationLayout = new QHBoxLayout(navigationControls);
-    navigationLayout->setContentsMargins(0, 0, 0, 0);
-    navigationLayout->setSpacing(2);
-    navigationLayout->addWidget(m_backButton);
-    navigationLayout->addWidget(m_forwardButton);
-    navigationLayout->addWidget(m_reloadButton);
+    if (auto* right = addDecoration(DecorationTheme::Side::Right))
+        headerLayout->addWidget(right);
 
-    if (hasRightControls && !hasLeftControls) {
-        headerLayout->addWidget(navigationControls);
-        headerLayout->addWidget(dragHandle, 1);
-        headerLayout->addWidget(rightControls);
-    } else if (hasLeftControls && !hasRightControls) {
-        headerLayout->addWidget(leftControls);
-        headerLayout->addWidget(dragHandle, 1);
-        headerLayout->addWidget(navigationControls);
-    } else if (hasLeftControls && hasRightControls) {
-        headerLayout->addWidget(leftControls);
-        headerLayout->addWidget(navigationControls);
-        headerLayout->addWidget(dragHandle, 1);
-        headerLayout->addWidget(rightControls);
-    } else {
-        headerLayout->addWidget(dragHandle, 1);
-        headerLayout->addWidget(navigationControls);
-    }
     sidebarLayout->addWidget(header);
 
     m_addressBar = new QLineEdit(sidebar);
@@ -255,10 +241,16 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     m_tabs = tabs;
     m_tabs->setItemDelegate(new TabItemDelegate(m_tabs));
     m_tabs->setObjectName(QStringLiteral("tabList"));
+    m_tabs->setFrameShape(QFrame::NoFrame);
+    m_tabs->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_tabs->setIconSize(QSize(16, 16));
+    m_tabs->setUniformItemSizes(true);
+    m_tabs->setWordWrap(false);
+    m_tabs->setTextElideMode(Qt::ElideRight);
     m_tabs->setSelectionMode(QAbstractItemView::SingleSelection);
     m_tabs->setDragDropMode(QAbstractItemView::InternalMove);
     m_tabs->setDefaultDropAction(Qt::MoveAction);
-    m_tabs->setSpacing(1);
+    m_tabs->setSpacing(2);
     sidebarLayout->addWidget(m_tabs, 1);
     m_networkManager = new QNetworkAccessManager(this);
 
@@ -298,40 +290,41 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
 
     auto* sidebarActions = new QHBoxLayout;
     sidebarActions->setSpacing(2);
-    auto* addTabButton = new QToolButton(sidebar);
-    addTabButton->setObjectName(QStringLiteral("sidebarAction"));
-    addTabButton->setToolTip(QStringLiteral("New tab (Ctrl+T)"));
-    addTabButton->setIcon(QIcon::fromTheme(QStringLiteral("tab-new"),
-        makePlusIcon(palette().color(QPalette::ButtonText))));
+
+    const auto makeSidebarAction = [sidebar](const QString& tooltip, const QIcon& icon) {
+        auto* button = new QToolButton(sidebar);
+        button->setObjectName(QStringLiteral("sidebarAction"));
+        button->setToolTip(tooltip);
+        button->setIcon(icon);
+        button->setCursor(Qt::PointingHandCursor);
+        return button;
+    };
+    const QColor buttonColor = palette().color(QPalette::ButtonText);
+
+    auto* addTabButton = makeSidebarAction(QStringLiteral("New tab (Ctrl+T)"),
+        QIcon::fromTheme(QStringLiteral("tab-new"), makePlusIcon(buttonColor)));
     sidebarActions->addWidget(addTabButton);
 
-    auto* historyButton = new QToolButton(sidebar);
-    historyButton->setObjectName(QStringLiteral("sidebarAction"));
-    historyButton->setToolTip(QStringLiteral("History"));
-    historyButton->setIcon(QIcon::fromTheme(QStringLiteral("view-history"),
-        makeHistoryIcon(palette().color(QPalette::ButtonText))));
+    auto* historyButton = makeSidebarAction(QStringLiteral("History"),
+        QIcon::fromTheme(QStringLiteral("view-history"), makeHistoryIcon(buttonColor)));
     connect(historyButton, &QToolButton::clicked, this, &MainWindow::openHistory);
     sidebarActions->addWidget(historyButton);
 
     sidebarActions->addStretch(1);
 
-    auto* settingsButton = new QToolButton(sidebar);
-    settingsButton->setObjectName(QStringLiteral("sidebarAction"));
-    settingsButton->setToolTip(QStringLiteral("Settings"));
-    settingsButton->setIcon(QIcon::fromTheme(QStringLiteral("configure"),
-        style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
+    auto* settingsButton = makeSidebarAction(QStringLiteral("Settings"),
+        QIcon::fromTheme(QStringLiteral("configure"),
+            style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
     connect(settingsButton, &QToolButton::clicked, this, &MainWindow::openSettings);
     sidebarActions->addWidget(settingsButton);
 
-    m_downloadButton = new QToolButton(sidebar);
-    m_downloadButton->setObjectName(QStringLiteral("sidebarAction"));
-    m_downloadButton->setToolTip(QStringLiteral("Downloads"));
-    m_downloadButton->setIcon(QIcon::fromTheme(QStringLiteral("download"),
-        makeDownloadIcon(palette().color(QPalette::ButtonText))));
+    m_downloadButton = makeSidebarAction(QStringLiteral("Downloads"),
+        QIcon::fromTheme(QStringLiteral("download"), makeDownloadIcon(buttonColor)));
     m_downloadsMenu = new QMenu(m_downloadButton);
     m_downloadButton->setMenu(m_downloadsMenu);
     m_downloadButton->setPopupMode(QToolButton::InstantPopup);
-    connect(m_downloadsMenu, &QMenu::aboutToShow, this, &MainWindow::rebuildDownloadsMenu);
+    connect(m_downloadsMenu, &QMenu::aboutToShow,
+        this, &MainWindow::rebuildDownloadsMenu);
     sidebarActions->addWidget(m_downloadButton);
     sidebarLayout->addLayout(sidebarActions);
 

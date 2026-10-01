@@ -70,6 +70,14 @@ QString sharedStyleSheet(const QPalette& palette)
         QToolButton#settingsButton:hover { background: palette(midlight); }
         QToolButton#settingsButton:disabled {
             color: palette(disabled, palette(text)); }
+        QListWidget#tabList {
+            background: transparent; border: 0; outline: 0; }
+        QListWidget#tabList::item {
+            color: palette(text); border: 0; border-radius: 8px;
+            padding: 8px 32px 8px 10px; }
+        QListWidget#tabList::item:hover { background: palette(midlight); }
+        QListWidget#tabList::item:selected {
+            background: palette(highlight); color: palette(highlighted-text); }
         QPushButton#settingsButton {
             background: palette(base); color: palette(button-text);
             border: 1px solid palette(mid); border-radius: 8px; padding: 6px 14px; }
