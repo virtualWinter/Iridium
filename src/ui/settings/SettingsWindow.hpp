@@ -6,6 +6,7 @@
 
 #include <memory>
 
+class QLayout;
 class QListWidget;
 class QListWidgetItem;
 class QStackedWidget;
@@ -67,9 +68,10 @@ protected:
 private:
     void buildUi();
     void selectCategoryByIndex(int index);
-    // The window controls for the rail. A frameless window has no title bar, so
-    // without these there is no way to dismiss it except Escape.
-    void addWindowControls();
+    // The window controls, added to `layout` at the top of the rail. A frameless
+    // window has no title bar, so without these there is no way to dismiss it
+    // except Escape.
+    void addWindowControls(QLayout* layout);
     void updateDecorationState();
 
     MainWindow& m_window;
@@ -83,6 +85,8 @@ private:
     ProfilesPage* m_profilesPage { nullptr };
     GeneralPage* m_generalPage { nullptr };
     AppearancePage* m_appearancePage { nullptr };
+    // The rail's top row: the window controls and the drag region between them.
+    QWidget* m_railHeader { nullptr };
     QListWidget* m_categories { nullptr };
     QStackedWidget* m_panes { nullptr };
     QHash<QString, QWidget*> m_paneForCategory;

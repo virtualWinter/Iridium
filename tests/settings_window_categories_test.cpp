@@ -162,13 +162,54 @@ int main(int argc, char** argv)
     check(settings.findChild<QWidget*>(QStringLiteral("settingsCategories")) != nullptr,
         "the category rail exists and is named for the shared stylesheet");
 
+    // The window controls belong at the TOP of the window, in the rail's header
+    // where a title bar's controls would be. They were once appended to the
+    // rail's own layout, which put them at the bottom below the category list,
+    // while a comment in the same function claimed they were in the header.
+    //
+    // Checked after the first show() below rather than here, because a layout has
+    // no geometry until it has been activated: measured before that, every child
+    // reports y=0 and the comparison passes for the wrong reason. Asserted by
+    // geometry rather than by widget name, since the whole point is where it
+    // ended up on screen.
+    auto* decoration = settings.findChild<WindowDecoration*>();
+    check(decoration != nullptr,
+        "the settings window has the system window controls");
+
     // Showing the window refreshes the live-state pages. History is recorded
     // here while the window is not shown, which is exactly the case refresh()
     // exists for.
     history.recordVisit(QStringLiteral("https://late.test/"),
         QStringLiteral("Recorded While Hidden"));
     settings.show();
+    app.processEvents();
     settings.hide();
+
+    if (decoration) {
+        auto* header = decoration->parentWidget();
+        auto* list = settings.findChild<QListWidget*>(
+            QStringLiteral("settingsCategoryList"));
+        check(header != nullptr, "the controls are parented to a header");
+        check(list != nullptr, "the category list exists");
+
+        if (header && list) {
+            // Mapped into the dialog's own coordinates, because each widget's y
+            // is relative to its own parent and the rail is itself inset, so
+            // comparing raw y values across parents would not mean anything.
+            QWidget* window = &settings;
+            const QPoint headerAt = header->mapTo(window, QPoint(0, 0));
+            const QPoint listAt = list->mapTo(window, QPoint(0, 0));
+            const QPoint controlsAt = decoration->mapTo(window, QPoint(0, 0));
+
+            check(controlsAt.y() >= 0 && controlsAt.y() < 80,
+                "the window controls are at the top of the window, at y="
+                    + std::to_string(controlsAt.y()));
+            check(headerAt.y() + header->height() <= listAt.y(),
+                "the header sits above the category list: header ends at y="
+                    + std::to_string(headerAt.y() + header->height())
+                    + ", the list starts at y=" + std::to_string(listAt.y()));
+        }
+    }
 
     // Scoped to the history page, because the extensions page has a list of its
     // own and picking any list with rows would test the wrong one.

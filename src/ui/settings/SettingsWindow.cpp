@@ -87,17 +87,24 @@ void SettingsWindow::buildUi()
     railLayout->setContentsMargins(8, 6, 8, 10);
     railLayout->setSpacing(10);
 
-    // A frameless window has no title bar, so the rail header carries the
-    // window controls and doubles as the drag region.
+    // A frameless window has no title bar, so the rail header stands in for one:
+    // window controls in the corner, empty space between them to drag by. It is
+    // added to the rail layout before anything else, which is what puts it at
+    // the top of the window.
     auto* header = new QWidget(rail);
+    // Kept, because addWindowControls parents the decoration to it and the
+    // header is otherwise a local.
+    m_railHeader = header;
     auto* headerLayout = new QHBoxLayout(header);
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(4);
+    railLayout->addWidget(header);
+
     auto* dragHandle = m_chrome->dragHandle();
     dragHandle->setParent(header);
     dragHandle->setMinimumWidth(8);
     headerLayout->addWidget(dragHandle, 1);
-    railLayout->addWidget(header);
+    addWindowControls(headerLayout);
 
     m_categories = new QListWidget(rail);
     m_categories->setObjectName(QStringLiteral("settingsCategoryList"));
@@ -111,8 +118,6 @@ void SettingsWindow::buildUi()
     // arrive before there is a pane to show.
     connect(m_categories, &QListWidget::currentRowChanged,
         this, &SettingsWindow::selectCategoryByIndex);
-
-    addWindowControls();
 
     rootLayout->addWidget(rail);
 
@@ -172,28 +177,23 @@ void SettingsWindow::buildUi()
     connect(closeShortcut, &QShortcut::activated, this, &QDialog::accept);
 }
 
-void SettingsWindow::addWindowControls()
+void SettingsWindow::addWindowControls(QLayout* layout)
 {
-    const auto& theme = DecorationTheme::system();
-    auto* rail = m_categories->parentWidget();
-    auto* layout = qobject_cast<QVBoxLayout*>(rail->layout());
     if (!layout)
         return;
+    const auto& theme = DecorationTheme::system();
 
     // The right-hand set, falling back to the left: a theme may put its controls
-    // on either side, and the rail only has room at the bottom.
-    auto* controls = new QWidget(rail);
-    controls->setObjectName(QStringLiteral("settingsControls"));
-    auto* controlsLayout = new QHBoxLayout(controls);
-    controlsLayout->setContentsMargins(0, 0, 0, 0);
-    controlsLayout->setSpacing(theme.buttonSpacing());
-
+    // on either side, and the header has room for either.
     const DecorationTheme::Side side =
         theme.buttons(DecorationTheme::Side::Right).isEmpty()
         ? DecorationTheme::Side::Left : DecorationTheme::Side::Right;
-    auto* decoration = new WindowDecoration(side, controls);
-    controlsLayout->addWidget(decoration);
-    controlsLayout->addStretch(1);
+    auto* decoration = new WindowDecoration(side, m_railHeader);
+    // Initialised here rather than left to the first changeEvent: the buttons
+    // are painted before any activation event arrives, and an unset
+    // m_maximized would draw the restore artwork as though it were maximize.
+    decoration->setWindowActive(isActiveWindow());
+    decoration->setMaximized(isMaximized());
 
     connect(decoration, &WindowDecoration::minimizeRequested,
         this, &QWidget::showMinimized);
@@ -202,9 +202,9 @@ void SettingsWindow::addWindowControls()
     });
     connect(decoration, &WindowDecoration::closeRequested, this, &QDialog::accept);
 
-    // Added last, below the category list: the list is what the rail is for, and
-    // the controls are only reached deliberately.
-    layout->addWidget(controls);
+    // Added after the drag handle, so the controls sit against the window's right
+    // edge and the draggable space is what is left over.
+    layout->addWidget(decoration);
     m_decorations.append(decoration);
 }
 
