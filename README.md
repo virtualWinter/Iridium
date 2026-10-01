@@ -58,3 +58,11 @@ per-API coverage table are in `docs/extensions/`. `docs/extensions/README.md` is
 the index; `docs/extensions/api-coverage.md` says what actually works today.
 
 Pass a URL to open it in the first tab, for example `./build/iridium https://arsn.cc`.
+
+A right-hand panel sits beside the page, with collapsible Bookmarks, History,
+Tabs and Extensions sections; one is open at a time, and Ctrl+B collapses the
+panel to its rail or brings it back. History reads the profile's history store
+and searches it as you type, Tabs follows the open tabs, and Extensions toggles
+an extension's enabled state in place. Bookmarks reports that it is not
+implemented, since there is no bookmark store yet. The panel is where an
+extension's `browser.sidebarAction` view will render.

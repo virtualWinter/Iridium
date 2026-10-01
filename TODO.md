@@ -50,7 +50,14 @@
 - [x] Sidebar (Zen-style left sidebar: window controls, navigation buttons, address bar and tab list; new-tab and downloads buttons in the bottom row)
 - [x] Downloads (XDG downloads directory, unique file names, progress/cancel/open menu)
 - [x] System color scheme (prefers-color-scheme)
-- [ ] Right sidebar UI
+- [x] Right sidebar (panel host with collapsible Bookmarks / History / Tabs /
+      Extensions sections, one open at a time, collapsible to a rail, Ctrl+B to
+      toggle; History reads the profile store, Tabs follows the tab list, and
+      Extensions toggles enable state in place. Bookmarks says it is not
+      implemented rather than showing an empty list. Tested as a widget with no
+      browser, engine or profile: `right-sidebar`)
+- [ ] Right sidebar: extension panels via `browser.sidebarAction`, once the
+      extension host lands. The panel host is the place it renders
 - [x] Profiles (named directories under XDG data; per-profile extensions, extension storage, settings and history; create/switch/delete in settings; switching restarts because open tabs belong to the profile that created them)
 - [x] History (per-profile SQLite store; records on navigation and title, skips internal pages; search, open, forget, clear and age-based deletion; retention + count pruning)
 - [ ] Permissions
