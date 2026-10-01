@@ -143,14 +143,8 @@ regenerate `docs/extensions/` after changing the specification pins.
 ## The browser
 
 The window uses a full-sidebar layout inspired by Zen: the tab list, navigation
-buttons, address field and window controls sit in the left sidebar while the
-page occupies the rest. A right-hand panel sits beside the page, with
-collapsible Bookmarks, History, Tabs and Extensions sections; one is open at a
-time, and Ctrl+B collapses the panel to its rail or brings it back. History
-reads the profile's history store and searches it as you type, Tabs follows the
-open tabs, and Extensions toggles an extension's enabled state in place.
-Bookmarks reports that it is not implemented, since there is no bookmark store
-yet.
+buttons, address field and window controls sit in a sidebar against the right
+edge while the page occupies the rest.
 
 Passing a URL opens it in the first tab. Ctrl+T opens another, Ctrl+H opens the
 history pane and Ctrl+, opens settings, which manages extensions and profiles.
@@ -185,7 +179,7 @@ offscreen Qt platform and skip themselves when neither is available:
 | `webview-theme`, `webview-download`, `webview-media`, `webview-history` | Colour scheme, downloads, media playback, history recording |
 | `webview-extension` | A content script from a real on-disk extension running in a matching page |
 | `extensions-manifest`, `extensions-registry`, `extensions-paths`, `extensions-api`, `extensions-dispatcher` | Manifest parsing, match patterns, install and enable, the API surface, the dispatcher |
-| `right-sidebar`, `settings`, `settings-window-categories`, `settings-store` | The panels and settings, as widgets |
+| `settings`, `settings-window-categories`, `settings-store` | The settings panes, as widgets |
 | `browser-data` | Profiles and history storage |
 | `extensions-coverage`, `extensions-codegen` | The generated specification inventory has not drifted from the documentation |
 

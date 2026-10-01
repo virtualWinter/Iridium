@@ -30,7 +30,6 @@ namespace iridium {
 
 class Browser;
 class SettingsWindow;
-class RightSidebar;
 
 class MainWindow final : public QMainWindow {
 public:
@@ -77,18 +76,6 @@ private:
     void openSettings();
     void openHistory();
     void applyColorScheme();
-
-    // The right-hand panel. It is a view: these three push the current state
-    // into it, and the lambdas it exposes are wired back to the same actions
-    // the sidebar uses, so a tab opened from the panel is a tab opened the same
-    // way as one opened from the left sidebar.
-    RightSidebar* rightSidebar() const;
-    void refreshRightSidebar();
-    void refreshRightSidebarHistory();
-    void refreshRightSidebarTabs();
-    void refreshRightSidebarExtensions();
-    void toggleRightSidebar();
-    bool handleShortcut(QKeyEvent* event);
 
     // Records a visit, called from the URI and title handlers. Either half may
     // be supplied; see the definition for why.
@@ -141,9 +128,6 @@ private:
     // Created on first use, then reused; parented to this window and deleted
     // with it.
     SettingsWindow* m_settingsWindow { nullptr };
-    // The right-hand panel host. Built in the constructor, so it is a child of
-    // root and needs no ownership rules of its own.
-    RightSidebar* m_rightSidebar { nullptr };
 };
 
 } // namespace iridium

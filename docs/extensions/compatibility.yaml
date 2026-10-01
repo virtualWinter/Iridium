@@ -852,7 +852,7 @@ manifest:
   sidebar_action:
     status: planned
     missing: [sidebar_action]
-    notes: Needs the right sidebar UI and an extension page host.
+    notes: Needs an extension page host. The sidebar to render it in exists.
     tests: []
 
   options_ui:

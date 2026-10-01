@@ -1,7 +1,5 @@
 #include "ui/MainWindow.hpp"
 
-#include "ui/RightSidebar.hpp"
-
 #include "browser/Browser.hpp"
 #include "browser/HistoryStore.hpp"
 #include "browser/ProfileManager.hpp"
@@ -19,12 +17,10 @@
 #include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
-#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QLocale>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QNetworkAccessManager>
@@ -188,9 +184,9 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     const QString windowBackground = palette().color(QPalette::Window).name();
     setStyleSheet(QStringLiteral(R"(
         QWidget#browserRoot { background: %1; border-radius: 14px; }
-        QWidget#arcSidebar { background: %1; border-top-left-radius: 14px;
-            border-bottom-left-radius: 14px; }
-        QFrame#rendererFrame { border-width: 3px; border-left-width: 0px; border-style: solid;
+        QWidget#arcSidebar { background: %1; border-top-right-radius: 14px;
+            border-bottom-right-radius: 14px; }
+        QFrame#rendererFrame { border-width: 3px; border-right-width: 0px; border-style: solid;
             border-color: %1; border-radius: 11px;
             background: %1; }
         QStackedWidget#rendererPages { background: palette(window); border-radius: 8px; }
@@ -207,30 +203,6 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
         QToolButton#chromeButton:hover { background: palette(midlight); }
         QToolButton#sidebarAction { border: 0; border-radius: 8px; padding: 8px; color: palette(button-text); text-align: left; }
         QToolButton#sidebarAction:hover { background: palette(midlight); }
-        QWidget#rightSidebar { background: %1; }
-        QWidget#rightSidebarRail { background: %1; border-top-right-radius: 14px;
-            border-bottom-right-radius: 14px; }
-        QWidget#rightSidebarPanel { background: %1; border-top-right-radius: 14px;
-            border-bottom-right-radius: 14px; }
-        QToolButton#sidebarRailButton { border: 0; border-radius: 8px; padding: 6px;
-            color: palette(button-text); }
-        QToolButton#sidebarRailButton:hover { background: palette(midlight); }
-        QToolButton#sidebarSectionHeader { border: 0; border-radius: 8px; padding: 7px 8px;
-            color: palette(text); font-weight: 600; text-align: left; }
-        QToolButton#sidebarSectionHeader:hover { background: palette(midlight); }
-        QToolButton#sidebarSectionHeader:checked { background: palette(midlight); }
-        QLineEdit#sidebarSearch { background: palette(base); border: 1px solid palette(mid);
-            border-radius: 12px; padding: 5px 10px; color: palette(text); }
-        QLineEdit#sidebarSearch:focus { border-color: palette(highlight); }
-        QLabel#sidebarPlaceholder { color: palette(mid); padding: 10px 4px; }
-        QLabel#rightSidebarTitle { color: palette(text); font-weight: 600;
-            padding: 4px 6px; }
-        QListWidget#sidebarList { background: transparent; border: 0; outline: 0; }
-        QListWidget#sidebarList::item { color: palette(text); border-radius: 8px;
-            padding: 6px 8px; margin: 1px 0; }
-        QListWidget#sidebarList::item:hover { background: palette(midlight); }
-        QListWidget#sidebarList::item:selected { background: palette(highlight);
-            color: palette(highlighted-text); }
     )").arg(windowBackground));
 
     auto* root = new QWidget(this);
@@ -412,7 +384,6 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
         if (m_downloadsMenu->isVisible())
             rebuildDownloadsMenu();
     });
-    rootLayout->addWidget(sidebar);
 
     auto* rendererFrame = new QFrame(root);
     rendererFrame->setObjectName(QStringLiteral("rendererFrame"));
@@ -428,65 +399,18 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     m_emptyState = empty;
     m_pages->addWidget(m_emptyState);
     rendererLayout->addWidget(m_pages);
-    rootLayout->addWidget(rendererFrame, 1);
 
-    // The panel goes outside the renderer frame, so it is not inset by the
-    // frame's border the way the page is: the right edge belongs to the window.
-    m_rightSidebar = new RightSidebar(root);
-    connect(m_rightSidebar, &RightSidebar::closeRequested,
-        this, &MainWindow::toggleRightSidebar);
-    connect(m_rightSidebar, &RightSidebar::historySearchChanged,
-        this, [this](const QString&) { refreshRightSidebarHistory(); });
-    connect(m_rightSidebar, &RightSidebar::historyEntryActivated,
-        this, [this](const QString& url) {
-            // Same rule as the history pane: open in the current tab when there
-            // is one, otherwise open a tab.
-            const int row = currentTabRow();
-            if (row >= 0)
-                navigateRow(row, url);
-            else
-                openTab(url, true);
-        });
-    connect(m_rightSidebar, &RightSidebar::tabActivated, this, [this](int row) {
-        selectTab(row);
-    });
-    connect(m_rightSidebar, &RightSidebar::extensionToggleRequested, this,
-        [this](const QString& id, bool enabled) {
-            if (!m_extensionRegistry)
-                return;
-            if (!m_extensionRegistry->setEnabled(id, enabled)) {
-                // The registry refused, so the check state in the panel is now
-                // a lie. Put it back rather than leaving it wrong.
-                refreshRightSidebarExtensions();
-                return;
-            }
-            refreshRightSidebarExtensions();
-        });
-    rootLayout->addWidget(m_rightSidebar);
+    // The page takes the space, and the sidebar sits against the right edge.
+    // Order in this layout is what decides which edge the sidebar hugs, so the
+    // sidebar is added last.
+    rootLayout->addWidget(rendererFrame, 1);
+    rootLayout->addWidget(sidebar);
 
     setCentralWidget(root);
-    refreshRightSidebar();
-
-    // The panel follows the tab list through the model rather than through
-    // calls in newTab() and closeTab(): inserting and removing a row is exactly
-    // what the panel needs to hear about, and hooking the model means a tab
-    // opened or closed by any future path updates it too.
-    connect(m_tabs->model(), &QAbstractItemModel::rowsInserted,
-        this, [this] { refreshRightSidebarTabs(); });
-    connect(m_tabs->model(), &QAbstractItemModel::rowsRemoved,
-        this, [this] { refreshRightSidebarTabs(); });
-
-    // Enable and disable in the settings window have to reach the panel too,
-    // or it will show a state the registry no longer holds.
-    if (m_extensionRegistry) {
-        connect(m_extensionRegistry.get(), &extensions::ExtensionRegistry::changed,
-            this, [this] { refreshRightSidebarExtensions(); });
-    }
 
     connect(addTabButton, &QToolButton::clicked, this, &MainWindow::newTab);
     tabs->closeRequested = [this](int row) { closeTab(row); };
     connect(m_tabs, &QListWidget::currentRowChanged, this, [this](int index) {
-        refreshRightSidebarTabs();
         if (index < 0 || index >= m_views.size()) {
             m_pages->setCurrentWidget(m_emptyState);
             m_addressBar->clear();
@@ -585,126 +509,6 @@ void MainWindow::releaseTabs()
     m_views.clear();
 }
 
-RightSidebar* MainWindow::rightSidebar() const
-{
-    return m_rightSidebar;
-}
-
-void MainWindow::refreshRightSidebar()
-{
-    if (!m_rightSidebar)
-        return;
-    refreshRightSidebarHistory();
-    refreshRightSidebarTabs();
-    refreshRightSidebarExtensions();
-}
-
-void MainWindow::refreshRightSidebarHistory()
-{
-    if (!m_rightSidebar)
-        return;
-
-    std::vector<RightSidebar::HistoryEntry> entries;
-    // A null store is a history failure, not an empty history, and the panel
-    // shows the same "nothing to show" text either way rather than pretending
-    // the user has no history.
-    if (m_history && m_history->isOpen()) {
-        history::Query query;
-        query.text = m_rightSidebar->historySearchText();
-        query.limit = 100;
-        const std::vector<history::Visit> visits = m_history->search(query);
-        entries.reserve(visits.size());
-        for (const history::Visit& visit : visits) {
-            RightSidebar::HistoryEntry entry;
-            entry.url = visit.url;
-            entry.title = visit.title;
-            // Relative time is what a history list is read by, so it is
-            // formatted here rather than being left to a locale-dependent
-            // default in the panel.
-            const QDateTime now = QDateTime::currentDateTime();
-            if (visit.lastVisit.isValid()) {
-                const qint64 seconds = visit.lastVisit.secsTo(now);
-                if (seconds < 60)
-                    entry.subtitle = tr("just now");
-                else if (seconds < 3600)
-                    entry.subtitle = tr("%n minute(s) ago", nullptr, int(seconds / 60));
-                else if (seconds < 86400)
-                    entry.subtitle = tr("%n hour(s) ago", nullptr, int(seconds / 3600));
-                else if (seconds < 172800)
-                    entry.subtitle = tr("yesterday");
-                else
-                    entry.subtitle = visit.lastVisit.date().toString(
-                        QLocale::system().dateFormat(QLocale::ShortFormat));
-            }
-            entries.push_back(std::move(entry));
-        }
-    }
-    m_rightSidebar->setHistoryEntries(entries);
-}
-
-void MainWindow::refreshRightSidebarTabs()
-{
-    if (!m_rightSidebar)
-        return;
-
-    const std::vector<extensions::TabSnapshot> snapshots = tabSnapshots();
-    std::vector<RightSidebar::TabEntry> entries;
-    entries.reserve(snapshots.size());
-    for (const extensions::TabSnapshot& tab : snapshots) {
-        RightSidebar::TabEntry entry;
-        entry.row = rowForTabId(tab.id);
-        entry.title = tab.title.isEmpty() ? tab.url : tab.title;
-        entry.subtitle = tab.url;
-        entry.active = tab.active;
-        entries.push_back(std::move(entry));
-    }
-    m_rightSidebar->setTabs(entries);
-}
-
-void MainWindow::refreshRightSidebarExtensions()
-{
-    if (!m_rightSidebar)
-        return;
-
-    std::vector<RightSidebar::ExtensionEntry> entries;
-    if (m_extensionRegistry) {
-        for (const std::unique_ptr<extensions::Extension>& extension
-            : m_extensionRegistry->extensions()) {
-            RightSidebar::ExtensionEntry entry;
-            entry.id = extension->id();
-            entry.name = extension->displayName();
-            entry.enabled = m_extensionRegistry->isEnabled(extension->id());
-            entries.push_back(std::move(entry));
-        }
-    }
-    m_rightSidebar->setExtensions(entries);
-}
-
-void MainWindow::toggleRightSidebar()
-{
-    if (!m_rightSidebar)
-        return;
-    if (m_rightSidebar->isExpanded())
-        m_rightSidebar->collapse();
-    else
-        m_rightSidebar->expand();
-}
-
-bool MainWindow::handleShortcut(QKeyEvent* event)
-{
-    if (!event || !m_rightSidebar)
-        return false;
-
-    // Ctrl+B toggles the panel. Firefox's Ctrl+B is bookmarks, but there is no
-    // bookmark store to show, and a panel with no shortcut is a panel nobody
-    // finds.
-    if (event->matches(QKeySequence::Bold)) {
-        toggleRightSidebar();
-        return true;
-    }
-    return false;
-}
-
 void MainWindow::applyColorScheme()
 {
     // Apply to every open view, not just future ones, so a change in settings
@@ -718,16 +522,6 @@ void MainWindow::applyColorScheme()
 
 bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 {
-    // The filter is installed on the application, so keys arrive here from every
-    // widget including the web content view. Only the window's own shortcut is
-    // intercepted, and only when the key was not already consumed.
-    if (event->type() == QEvent::KeyPress && watched != nullptr
-        && qobject_cast<QWidget*>(watched)
-        && qobject_cast<QWidget*>(watched)->window() == this) {
-        if (handleShortcut(static_cast<QKeyEvent*>(event)))
-            return true;
-    }
-
     if (event->type() != QEvent::MouseButtonPress || isMaximized())
         return QMainWindow::eventFilter(watched, event);
 

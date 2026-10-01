@@ -43,7 +43,7 @@ parsing is not implementing.
 | `protocol_handlers` | planned | 54 | no | MV2+ | Firefox-only key; needs a protocol registration concept in browser core. |
 | `sandbox` | planned | 154 | 21 | MV2+ | Not parsed. A sandboxed extension page needs a restricted context with a narrower API surface, which is an execution-context concept. |
 | `short_name` | planned | 48 | ≤54 | MV2+ | Parsed only as part of the raw manifest. |
-| `sidebar_action` | planned | 54 | no | MV2+ | Needs the right sidebar UI and an extension page host. |
+| `sidebar_action` | planned | 54 | no | MV2+ | Needs an extension page host. The sidebar to render it in exists. |
 | `storage` | planned | no | ≤80 | MV2+ | Not parsed. This is the key that makes storage.managed readable from administrator policy, and Iridium has no policy provider yet. |
 | `theme` | planned | 55 | ≤59 | MV2+ | Not parsed; depends on the theme API. |
 | `theme_experiment` | planned | 63 | no | MV2+ | Firefox-only experiment key, and Iridium runs no experiments. Listed so the inventory stays complete. |

@@ -131,13 +131,11 @@ controls live in the sidebar, next to stacked content pages; the
 copied window-decoration controls live in the UI layer. The zero-tabs case
 displays a Qt-only empty state and has no engine view.
 
-`RightSidebar` is the right-hand panel, owned by `MainWindow` and built as a
-plain view: its sections are fed from the services that already own the state
-(the history store, the tab list, the extension registry), and its actions come
-back out as signals that `MainWindow` wires to the same handlers the left
-sidebar already uses. It follows the tab list through the tab model rather than
-through calls in `newTab()` and `closeTab()`, so a tab opened by any path
-updates it and a panel cannot become a second source of truth for tab state.
-That is what lets `tests/right_sidebar_test.cpp` exercise it as a widget with no
-window, engine or profile. It is also where an extension's `sidebarAction` view
-is meant to render once the extension host lands.
+The sidebar sits against the **right** edge and the page takes the rest. That is
+decided by two things, not by a position property: the order widgets are added to
+the root `QHBoxLayout` (the renderer frame first with stretch, the sidebar last,
+so the sidebar hugs the right edge), and the stylesheet, where `arcSidebar` takes
+right-hand corner radii and `rendererFrame` sets `border-right-width: 0` so the
+page's rounded border is not drawn against the window edge. Moving the sidebar
+back to the left means reversing both, and only the layout order affects
+behaviour — the radii are cosmetic.

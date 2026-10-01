@@ -24,14 +24,6 @@ set(ENGINE_VIEW_SOURCES
     src/engine/webkit/PreferredColorScheme.cpp
 )
 
-# The main window and the right-hand panel. They are a group because they are
-# always built together: the panel is owned by the window, so any target that
-# compiles MainWindow needs it.
-set(UI_MAIN_SOURCES
-    src/ui/MainWindow.cpp
-    src/ui/RightSidebar.cpp
-)
-
 # Per-profile data. Both are needed by the settings window as well as the
 # browser, so they are a named group.
 set(PROFILE_HISTORY_SOURCES
@@ -83,8 +75,7 @@ add_executable(iridium
     src/app/Application.cpp
     src/browser/Browser.cpp
     ${PROFILE_HISTORY_SOURCES}
-    ${UI_MAIN_SOURCES}
-    src/ui/RightSidebar.cpp
+    src/ui/MainWindow.cpp
     src/ui/decoration/decorationtheme.cpp
     src/ui/decoration/windowdecoration.cpp
     ${SETTINGS_UI_SOURCES}
@@ -208,24 +199,12 @@ if(BUILD_TESTING)
 
     # The settings panes as widgets: list contents, filtering, toggling, and
     # install/remove round trips against real fixtures.
-    # The right-hand panel as a widget. It needs no browser, no engine and no
-    # profile, which is the property being tested: the panel is a view.
-    add_executable(right-sidebar-test
-        tests/right_sidebar_test.cpp
-        src/ui/RightSidebar.cpp)
-    target_include_directories(right-sidebar-test PRIVATE src)
-    set_target_properties(right-sidebar-test PROPERTIES AUTOMOC ON)
-    # QSignalSpy lives in Qt6::Test, not Qt6::Widgets.
-    target_link_libraries(right-sidebar-test PRIVATE Qt6::Widgets Qt6::Test)
-    target_compile_options(right-sidebar-test PRIVATE -Wall -Wextra -Wpedantic)
-    add_test(NAME right-sidebar COMMAND right-sidebar-test)
-    set_tests_properties(right-sidebar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     # The settings window drives MainWindow, so this target links the browser
     # UI as well as the panes.
     add_executable(settings-test
         tests/settings_test.cpp
-        ${UI_MAIN_SOURCES}
+        src/ui/MainWindow.cpp
         src/browser/Browser.cpp
         ${EXTENSIONS_CORE_SOURCES}
         src/extensions/ExtensionApi.cpp
@@ -271,7 +250,7 @@ if(BUILD_TESTING)
         tests/webview_history_test.cpp)
     # The real MainWindow, so history is recorded by the shipping code path.
     target_sources(webview-history-test PRIVATE
-        ${UI_MAIN_SOURCES}
+        src/ui/MainWindow.cpp
         src/browser/Browser.cpp
         src/ui/decoration/decorationtheme.cpp
         src/ui/decoration/windowdecoration.cpp
@@ -299,7 +278,7 @@ if(BUILD_TESTING)
     iridium_add_webview_test(settings-window-categories-test settings-window-categories
         tests/settings_window_categories_test.cpp)
     target_sources(settings-window-categories-test PRIVATE
-        ${UI_MAIN_SOURCES}
+        src/ui/MainWindow.cpp
         src/browser/Browser.cpp
         src/ui/decoration/decorationtheme.cpp
         src/ui/decoration/windowdecoration.cpp
