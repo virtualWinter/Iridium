@@ -1,0 +1,8 @@
+/build/
+/cmake-build-*/
+compile_commands.json
+
+# Pinned upstream WebExtensions definitions (MDN browser-compat-data, MDN
+# content, Gecko schemas). Large, re-fetchable with tools/webext/fetch.py, and
+# only the reduced inventory under docs/extensions/data/ is committed.
+/.cache/

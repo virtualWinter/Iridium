@@ -1,0 +1,1052 @@
+# Iridium WebExtensions compatibility database
+#
+# This is the single source of truth for what Iridium implements. The
+# human-readable coverage tables in api-coverage.md and manifest-coverage.md are
+# generated from it (tools/webext/coverage.py); no status is stated anywhere
+# else. A namespace or manifest key missing from here is a bug, and
+# coverage.py fails on one, which is how the list stays current as the surface
+# grows.
+#
+# States:
+#   full         every documented member, event, permission, error and edge case
+#                is implemented and covered by the named automated tests
+#   partial      some of it works; `missing` says what does not
+#   experimental implemented, with known deviations from the specification
+#   planned      designed and scheduled, not implemented
+#   unsupported  cannot be supported on this engine; `why` says what blocks it
+#
+# `tests` names CTest targets that demonstrate the claim. A namespace may not be
+# `full` without one: an API whose JS namespace merely exists has not been
+# implemented, and this file is where that distinction is recorded.
+#
+# Regenerate the documents with:
+#   tools/webext/coverage.py
+
+meta:
+  target: complete applicable MDN WebExtensions surface
+  engine_build: >
+    The installed WPE 2.52.6 was compiled with ENABLE(WK_WEB_EXTENSIONS)=OFF, so
+    WebKit's own extension types are present as NULL-returning stubs. Entries
+    marked unsupported are unsupported by *this build* unless their reason says
+    otherwise. See docs/extensions/webkit-integration.md.
+  browser_namespace: browser.*
+  chrome_namespace: chrome.*
+  engines_not_used: [chromium, cef, qtwebengine, electron, gecko]
+  build: prototype WebExtensions host (content scripts in the page world)
+
+# --------------------------------------------------------------------------
+# JavaScript APIs
+# --------------------------------------------------------------------------
+api:
+
+  # --- currently reachable from extension JavaScript -----------------------
+
+  runtime:
+    status: partial
+    missing: [connect, onConnect, sendMessage, onMessage, connectNative,
+              sendNativeMessage, onConnectExternal, onMessageExternal, getContexts,
+              getBrowserInfo, getBackgroundPage, getDocumentId, getFrameId,
+              getPackageDirectoryEntry, getVersion, openOptionsPage, reload,
+              requestUpdateCheck, setUninstallURL, onInstalled, onStartup,
+              onSuspend, onSuspendCanceled, onRestartRequired, onUpdateAvailable,
+              onBrowserUpdateAvailable, onPerformanceWarning,
+              onUserScriptConnect, onUserScriptMessage]
+    notes: >
+      id, getURL, getManifest and getPlatformInfo answer. getURL returns an
+      iridium-extension:// URL; moz-extension://<uuid>/ needs a real WebKit URI
+      scheme handler (see webkit-integration.md). connect() returns an inert stub
+      instead of a port, and there is no message bus yet, so messaging members are
+      missing rather than merely untested. lastError is a stub.
+    tests: [extensions-api, webview-extension]
+
+  tabs:
+    status: partial
+    missing: [captureTab, captureVisibleTab, connect, detectLanguage, discard,
+              duplicate, executeScript, getAllInWindow, getSelected, getZoom,
+              getZoomSettings, goBack, goForward, group, highlight, insertCSS,
+              move, moveInSuccession, onActivated, onActiveChanged, onAttached,
+              onDetached, onHighlightChanged, onHighlighted, onMoved, onReplaced,
+              onSelectionChanged, onUpdated, onZoomChange, print, printPreview,
+              reload, removeCSS, saveAsPDF, sendMessage, sendRequest, setZoom,
+              setZoomSettings, show, toggleReaderMode, ungroup, warmup]
+    notes: >
+      query, get, getCurrent, create, update and remove work against TabManager
+      and are gated on the "tabs" permission. reload is registered but performs no
+      navigation, so it is listed as missing. Tab objects carry only id, windowId,
+      url, title, favIconUrl, active and index; status, pinned, discarded, audible,
+      incognito, openerTabId and groupId are absent, and no query property other
+      than url, title, active and currentWindow is honoured.
+    tests: [extensions-api]
+
+  windows:
+    status: partial
+    missing: [create, update, remove, get, getLastFocused, onBoundsChanged,
+              onCreated, onFocusChanged, onRemoved]
+    notes: >
+      getAll and getCurrent report ids only. Window objects lack tabs, incognito,
+      type, state, parentId and drawAttention, and get() ignores its argument.
+    tests: [extensions-api]
+
+  storage:
+    status: partial
+    missing: [sync, managed, session, onChanged, local.getBytesInUse]
+    notes: >
+      storage.local get/set/remove/clear work, are per-extension and persist to
+      the profile. session, sync and managed do not exist, onChanged never fires,
+      and local.getBytesInUse has no quota accounting behind it.
+    tests: [extensions-api, extensions-registry]
+
+  i18n:
+    status: partial
+    missing: [detectLanguage, getAcceptLanguages, getPreferredSystemLanguages,
+              getSystemUILanguage]
+    notes: >
+      getMessage exists but has no _locales support and returns an empty string
+      where the specification requires the message key. getUILanguage is
+      hardcoded to en-US. Localized manifest fields are not substituted.
+    tests: [extensions-api]
+
+  permissions:
+    status: planned
+    missing: [contains, getAll, onAdded, onRemoved, remove, request]
+    notes: >
+      The permission check itself works: every registered handler carries the
+      permission it needs, optional permissions can be granted and revoked in
+      settings, and the dispatcher refuses a call whose permission is not held
+      (extensions-api asserts this). What does not exist is the API that lets an
+      extension inspect or request permissions at runtime, so those are missing.
+      activeTab has no grant flow.
+    tests: [extensions-api, extensions-registry]
+
+  scripting:
+    status: planned
+    missing: [executeScript, getRegisteredContentScripts, insertCSS,
+              registerContentScripts, removeCSS, unregisterContentScripts,
+              updateContentScripts]
+    notes: >
+      executeScript is registered as a handler but rejects, because there is no
+      per-call injection path and content scripts run in the page world.
+    tests: []
+
+  contentScripts:
+    status: planned
+    missing: [register]
+    notes: >
+      MV2-only namespace. register() would need the same registry the manifest
+      path uses, which does not exist yet.
+    tests: []
+
+  browserAction:
+    status: planned
+    missing: [disable, enable, getBadgeBackgroundColor, getBadgeText,
+              getBadgeTextColor, getPopup, getTitle, getUserSettings, isEnabled,
+              onClicked, onUserSettingsChanged, openPopup, setBadgeBackgroundColor,
+              setBadgeText, setBadgeTextColor, setIcon, setPopup, setTitle]
+    # Every member is missing, including the ones with no toolbar to render
+    # into: the manifest key is parsed, but nothing about an action is reachable
+    # from JavaScript, so the status is planned rather than partial.
+    notes: >
+      The manifest key is parsed and the extension appears in the management list,
+      but no toolbar surface renders it: Iridium's UI is custom and has no button
+      yet, so nothing is reachable from JavaScript.
+    tests: []
+
+  action:
+    status: planned
+    missing: [disable, enable, getBadgeBackgroundColor, getBadgeText,
+              getBadgeTextColor, getPopup, getTitle, getUserSettings, isEnabled,
+              onClicked, onUserSettingsChanged, openPopup, setBadgeBackgroundColor,
+              setBadgeText, setBadgeTextColor, setIcon, setPopup, setTitle]
+    notes: MV3 counterpart of browserAction; same state, plus windowId parameters.
+    tests: []
+
+  pageAction:
+    status: planned
+    missing: [getPopup, getTitle, hide, isShown, onClicked, openPopup, setIcon,
+              setPopup, setTitle, show]
+    notes: >
+      Needs an address-bar surface in the custom UI, and an extension page host to
+      open a popup in.
+    tests: []
+
+  sidebarAction:
+    status: planned
+    missing: [close, getBadgeBackgroundColor, getBadgeText, getPanel, getTitle,
+              isOpen, onBlur, onFocus, open, setBadgeBackgroundColor, setBadgeText,
+              setIcon, setPanel, setTitle, toggle]
+    notes: >
+      Firefox-specific sidebar surface. Iridium's sidebar is part of its own UI
+      design, so an extension sidebar would have to be hosted inside that layout
+      rather than replacing it, and its panel needs an extension page host.
+    tests: []
+
+  extension:
+    status: planned
+    missing: [getBackgroundPage, getExtensionTabs, getURL, getViews,
+              isAllowedFileSchemeAccess, isAllowedIncognitoAccess, lastError,
+              onRequest, onRequestExternal, sendRequest, setUpdateUrlData]
+    notes: >
+      inIncognitoContext would be a constant false, because incognito does not
+      exist. extension.getURL must agree with runtime.getURL; implementing both
+      from one helper is part of the runtime work.
+    tests: []
+
+  management:
+    status: planned
+    missing: [get, getAll, getSelf, getPermissionWarningsById,
+              getPermissionWarningsByManifest, install, onDisabled, onEnabled,
+              onInstalled, onUninstalled, setEnabled, uninstall, uninstallSelf]
+    notes: >
+      Enable, disable, install and uninstall all work through the registry and the
+      settings UI, and the registry test exercises them. There is no JavaScript
+      surface and no events, so nothing is reachable from an extension.
+    tests: [extensions-registry, extensions-paths]
+
+  history:
+    status: planned
+    missing: [addUrl, deleteAll, deleteRange, deleteUrl, getVisits,
+              onTitleChanged, onVisitRemoved, onVisited, search]
+    notes: >
+      A per-profile SQLite history store with search, retention pruning and
+      clear-on-age exists in browser core and is tested (browser-data). It is not
+      exposed to extensions at all, so no member is reachable.
+    tests: [browser-data]
+
+  downloads:
+    status: planned
+    missing: [acceptDanger, cancel, download, erase, getFileIcon, onChanged,
+              onCreated, onErased, open, pause, removeFile, resume, search,
+              setShelfEnabled, show, showDefaultFolder]
+    notes: >
+      The browser has a working download manager (XDG directory, unique names,
+      progress, cancel, open) and a downloads UI, all exercised by webview-download.
+      None of it is exposed to extensions yet.
+    tests: [webview-download]
+
+  proxy:
+    status: planned
+    missing: [onError, onRequest, settings]
+    notes: >
+      WebKitNetworkSession::set_proxy_settings exists, so proxying itself is
+      reachable. The per-request onRequest event that chooses the proxy is not,
+      and the settings property has no exposed backing object.
+    tests: []
+
+  publicSuffix:
+    status: planned
+    missing: [getDomain, getKnownSuffix, isKnownSuffix]
+    notes: >
+      libsoup exposes soup_tld_get_public_suffix and the effective TLD database
+      the browser already loads, so this is a thin mapping rather than a missing
+      dependency.
+    tests: []
+
+  find:
+    status: planned
+    missing: [find, highlightResults, removeHighlighting]
+    notes: WebKitFindController is available per view; nothing bridges it to a tab id.
+    tests: []
+
+  # --- reachable only once an extension-owned JS host exists ---------------
+
+  alarms:
+    status: planned
+    missing: [clear, clearAll, create, get, getAll, onAlarm]
+    notes: >
+      Needs a scheduler that survives background teardown, which means the
+      service-worker lifetime rules have to exist first.
+    tests: []
+
+  bookmarks:
+    status: planned
+    missing: [create, get, getChildren, getRecent, getSubTree, getTree, move,
+              onChanged, onChildrenReordered, onCreated, onImportBegan,
+              onImportEnded, onMoved, onRemoved, remove, removeTree, search,
+              update]
+    notes: Requires a bookmark service in browser core; none exists yet.
+    tests: []
+
+  sessions:
+    status: planned
+    missing: [forgetClosedTab, forgetClosedWindow, getRecentlyClosed,
+              getTabValue, getWindowValue, onChanged, removeTabValue,
+              removeWindowValue, restore, setTabValue, setWindowValue]
+    notes: >
+      Browser keeps a pool of closed views but not the metadata sessions.restore
+      needs (tab list, window layout, last-used timestamps).
+    tests: []
+
+  notifications:
+    status: planned
+    missing: [clear, create, getAll, onButtonClicked, onClicked, onClosed,
+              onShown, update]
+    notes: Platform-layer desktop notifications; none exists yet.
+    tests: []
+
+  omnibox:
+    status: planned
+    missing: [onDeleteSuggestion, onInputCancelled, onInputChanged,
+              onInputEntered, onInputStarted, setDefaultSuggestion]
+    notes: Needs address-bar integration and a suggestion surface in the custom UI.
+    tests: []
+
+  menus:
+    status: planned
+    missing: [create, getTargetElement, onClicked, onHidden, onShown,
+              overrideContext, refresh, remove, removeAll, update]
+    notes: >
+      menus and its MV2 alias contextMenus must both be exposed from one
+      implementation; Chrome extensions call contextMenus and Firefox extensions
+      call menus, and both must work.
+    tests: []
+
+  commands:
+    status: planned
+    missing: [getAll, onCommand, update]
+    notes: >
+      The manifest key declares keyboard shortcuts that the browser owns, so this
+      needs a shortcut registry in the UI layer, not just API plumbing.
+    tests: []
+
+  theme:
+    status: planned
+    missing: [getCurrent, onUpdated, reset, update]
+    notes: >
+      Iridium's palette comes from the Qt system palette. A theme API needs a
+      theme layer that does not exist; the dark_theme manifest key depends on it.
+    tests: []
+
+  tabGroups:
+    status: planned
+    missing: [get, move, onCreated, onMoved, onRemoved, onUpdated, query, update]
+    notes: Browser core has no tab groups.
+    tests: []
+
+  search:
+    status: planned
+    missing: [get, query, search]
+    notes: A search template setting exists; there is no installed-engine list.
+    tests: []
+
+  topSites:
+    status: planned
+    missing: [get]
+    notes: >
+      Derivable from the history store, which already records visits. Needs a
+      ranking definition and an exclude/allow URL policy.
+    tests: []
+
+  browsingData:
+    status: planned
+    missing: [remove, removeCache, removeCookies, removeDownloads, removeFormData,
+              removeHistory, removeLocalStorage, removePasswords, removePluginData,
+              settings]
+    notes: >
+      WebKitWebsiteDataManager can clear cookies, cache, local storage and offline
+      application data, which covers most dataTypes. Passwords, form data and
+      plugin data are Iridium's own stores; per-origin scoping needs its own pass.
+    tests: []
+
+  browserSettings:
+    status: planned
+    missing: [allowPopupsForUserEvents, cacheEnabled, closeTabsByDoubleClick,
+              colorManagement, contextMenuShowEvent, ftpProtocolEnabled,
+              homepageOverride, imageAnimationBehavior, newTabPageOverride,
+              newTabPosition, openBookmarksInNewTabs, openSearchResultsInNewTabs,
+              openUrlbarResultsInNewTabs, overrideContentColorScheme,
+              overrideDocumentColors, tlsVersionRestrictionConfig, useDocumentFonts,
+              verticalTabs, webNotificationsDisabled, zoomFullPage,
+              zoomSiteSpecific]
+    notes: >
+      Needs types.BrowserSetting first, then a global settings service with
+      per-setting LevelOfControl. SettingsStore is profile- and UI-scoped, not a
+      global settings service, so most settings have no owner yet.
+    tests: []
+
+  privacy:
+    status: planned
+    missing: [network, services, websites]
+    notes: >
+      The sub-namespaces are objects rather than callables, so they are all
+      missing until browserSettings exists and a settings owner is chosen for
+      each preference.
+    tests: []
+
+  contextualIdentities:
+    status: planned
+    missing: [create, get, getSupportedColors, getSupportedIcons, move,
+              onCreated, onRemoved, onUpdated, query, remove, update]
+    notes: >
+      Must be a real browser feature, not metadata: separate cookie jars,
+      storage partitions, caches and credential stores per container. The
+      mechanism is one WebKitNetworkSession per container, which also gives the
+      partition isolation the specification describes.
+    tests: []
+
+  identity:
+    status: planned
+    missing: [getRedirectURL, launchWebAuthFlow]
+    notes: Needs OAuth2 with a browser-owned redirect; no webRequest-level interception exists.
+    tests: []
+
+  idle:
+    status: planned
+    missing: [onStateChanged, queryState, setDetectionInterval]
+    notes: >
+      Platform layer: a screensaver/dbus idle query behind the generic API.
+    tests: []
+
+  dns:
+    status: planned
+    missing: [resolve]
+    notes: >
+      Resolving from the browser process would bypass WebKit's resolver and its
+      DNS-over-HTTPS configuration, creating a second inconsistent path. The
+      implementation should go through WebKitNetworkSession::prefetch_dns or
+      share the same resolver configuration.
+    tests: []
+
+  clipboard:
+    status: planned
+    missing: [setImageData]
+    notes: >
+      WPE exposes WebKitClipboard at the platform level rather than per view, so
+      this belongs in the platform layer; it must not leak WPE types into the API.
+    tests: []
+
+  captivePortal:
+    status: planned
+    missing: [canonicalURL, getLastChecked, getState, onConnectivityAvailable,
+              onStateChanged]
+    notes: >
+      Gecko implements this as networkStatus. Iridium needs a connectivity check;
+      onStateChanged has to ride on the event router, so it arrives with Phase 2.
+    tests: []
+
+  devtools:
+    status: unsupported
+    missing: [inspectedWindow, network, panels]
+    why: >
+      The only inspector entry point this build exposes is
+      webkit_web_view_toggle_inspector, which opens a UI; the remote inspector
+      lives in the web process with no client API to attach to from the embedder.
+      WebKit's remote inspector does exist in the shipped binaries
+      (WEBKIT_INSPECTOR_SERVER, RemoteInspectorClient), so a client may be
+      buildable, but that is an unproven probe rather than a design. Note that
+      upstream's extension tree contains no devtools extension API either, so
+      turning WK_WEB_EXTENSIONS on would not by itself deliver devtools.*. See
+      webkit-integration.md.
+    tests: []
+
+  userScripts:
+    status: unsupported
+    missing: [configureWorld, execute, getScripts, getWorldConfigurations,
+              register, resetWorldConfiguration, unregister, update]
+    why: >
+      userScripts needs a stable userScripts script world shared by every
+      registered script, plus a manager that gates the API. WebKit's
+      world-per-name model can express the world (Apple's own guidance is one
+      world per extension), but this build exposes no way to bind a world to an
+      extension, and upstream's extension tree has no userScripts manager either.
+      The MV2 variant additionally depends on a privileged opt-in that has no
+      meaning here.
+    tests: []
+
+  userScripts_legacy:
+    status: unsupported
+    missing: [onBeforeScript, register]
+    why: >
+      MV2-only legacy variant. Superseded by userScripts, which is itself
+      blocked; implementing the legacy API without the new one would be building
+      the older of two dead ends.
+    tests: []
+
+  pkcs11:
+    status: unsupported
+    missing: [getModuleSlots, installModule, isModuleInstalled, uninstallModule]
+    why: >
+      The purpose of PKCS#11 in a browser is to supply client certificates to the
+      TLS stack, and neither this build nor upstream WebKit exposes a
+      client-certificate selection hook, so a slot could never be used for the
+      thing it exists for. Unlike the extension APIs this is not a build flag
+      away; it needs a WebKit change.
+    tests: []
+
+  webRequest:
+    status: unsupported
+    missing: [filterResponseData, getSecurityInfo, handlerBehaviorChanged,
+              onAuthRequired, onBeforeRedirect, onBeforeRequest,
+              onBeforeSendHeaders, onCompleted, onErrorOccurred, onHeadersReceived,
+              onResponseStarted, onSendHeaders]
+    why: >
+      Not in this build rather than not in WebKit. The installed WPE 2.52 was
+      compiled with ENABLE(WK_WEB_EXTENSIONS)=OFF, and its public API has no
+      per-request hook: decide-policy covers navigations only, WebKitURIRequest
+      exposes no header setter, and no SoupSession accessor exists. Upstream
+      WebKit does not implement webRequest either (its extension tree has
+      declarative rules but no webRequest), so the remedy is either a WPE build
+      with the extension option on plus our own interception, or a WebKit patch.
+      See webkit-integration.md before spending effort here.
+    tests: []
+
+  declarativeNetRequest:
+    status: unsupported
+    missing: [getAvailableStaticRuleCount, getDisabledRuleIds, getDynamicRules,
+              getEnabledRulesets, getMatchedRules, getSessionRules,
+              isRegexSupported, onRuleMatchedDebug, setExtensionActionOptions,
+              testMatchOutcome, updateDynamicRules, updateEnabledRulesets,
+              updateSessionRules, updateStaticRules]
+    why: >
+      Upstream WebKit does implement DNR - WebExtensionContextAPIDeclarativeNetRequest.cpp
+      and WebExtensionDeclarativeNetRequestSQLiteStore.cpp - behind
+      ENABLE(WK_WEB_EXTENSIONS), which this build has off. So this is a build
+      question first and an engine question second: the rules engine has to run
+      where requests are made, inside the network process, and the browser
+      process has nothing to apply it to. Measuring what a WPE build with the
+      option on exposes is the first step, not writing an engine.
+    tests: []
+
+  webNavigation:
+    status: planned
+    missing: [getAllFrames, getFrame, onBeforeNavigate, onCommitted, onCompleted,
+              onCreatedNavigationTarget, onDOMContentLoaded, onErrorOccurred,
+              onHistoryStateUpdated, onReferenceFragmentUpdated, onTabReplaced]
+    notes: >
+      No navigation phase event fires today. TabManager learns the URL only after
+      the load, so onCompleted cannot be reconstructed after the fact: this needs
+      WebKit load-changed and load-failed signals wired to the event router, and
+      per-frame detail that WebKitWebFrame exposes only as id, uri and
+      is-main-frame.
+    tests: []
+
+  cookies:
+    status: planned
+    missing: [get, getAll, getAllCookieStores, onChanged, remove, sameSiteStatus,
+              set]
+    notes: >
+      WebKitCookieManager is reachable through
+      WebKitNetworkSession::get_cookie_manager, so this is a mapping exercise
+      rather than a missing hook. Fidelity is capped: the WebKit cookie type
+      exposes no SameSite or storeId, which get() documents, and getAllCookieStores
+      needs the per-container sessions that contextualIdentities also require.
+    tests: []
+
+  # --- namespaces that exist upstream but are out of scope ----------------
+
+  dom:
+    status: planned
+    missing: [openOrClosedShadowRoot]
+    notes: >
+      Content-script only. One accessor over the WebKit frame's shadow root; needs
+      the content-script world model first.
+    tests: []
+
+  contentScriptGlobalScope:
+    status: planned
+    missing: [cloneInto, exportFunction]
+    notes: >
+      Firefox-only globals for passing objects between a content script and the
+      page. WebKit has no equivalent primitive, so Iridium cannot implement the
+      Firefox semantics; it must not be faked with a plain object copy, which
+      would silently differ where it matters.
+    tests: []
+
+  contextMenus:
+    status: planned
+    missing: []
+    notes: >
+      MV2 alias of menus. It must be exposed from the same implementation so a
+      Chrome-era extension calling contextMenus works; tracked with menus.
+    tests: []
+
+  sidePanel:
+    status: unsupported
+    why: >
+      Chrome-only namespace (BCD records it as Firefox-unsupported). It is not
+      part of the MDN-documented cross-browser surface Iridium targets, and
+      implementing a Chrome-only UI surface is a compatibility decision, not a
+      specification requirement.
+    tests: []
+
+  'browserSettings.colorManagement':
+    status: planned
+    missing: [mode, useNativeSRGB, useWebRenderCompositor]
+    notes: Firefox-specific sub-namespace of browserSettings; follows it.
+    tests: []
+
+  'privacy.network':
+    status: planned
+    missing: [globalPrivacyControl, httpsOnlyMode, networkPredictionEnabled,
+              peerConnectionEnabled, tlsVersionRestriction,
+              webRTCIPHandlingPolicy]
+    notes: Firefox-specific sub-namespace of privacy; follows it.
+    tests: []
+
+  'privacy.services':
+    status: planned
+    missing: [passwordSavingEnabled]
+    notes: Firefox-specific sub-namespace of privacy; follows it.
+    tests: []
+
+  'privacy.websites':
+    status: planned
+    missing: [cookieConfig, firstPartyIsolate, hyperlinkAuditingEnabled,
+              protectedContentEnabled, referrersEnabled, resistFingerprinting,
+              thirdPartyCookiesAllowed, trackingProtectionMode]
+    notes: Firefox-specific sub-namespace of privacy; follows it.
+    tests: []
+
+  'devtools.inspectedWindow':
+    status: unsupported
+    missing: [eval, getResources, onResourceAdded, onResourceContentCommitted,
+              reload]
+    why: >
+      Requires a connection to the WebKit remote inspector for the inspected tab.
+      See devtools: the hook does not exist in the public API and the client side
+      is an unproven probe.
+    tests: []
+
+  'devtools.network':
+    status: unsupported
+    missing: [getHAR, onNavigated, onRequestFinished]
+    why: Same missing WebKit inspector hook as devtools.inspectedWindow.
+    tests: []
+
+  'devtools.panels':
+    status: unsupported
+    missing: [create, elements, onThemeChanged, openResource,
+              setOpenResourceHandler, sources, themeName]
+    why: Same missing WebKit inspector hook as devtools.inspectedWindow.
+    tests: []
+
+  networkStatus:
+    status: planned
+    missing: []
+    notes: >
+      Gecko-internal namespace behind captivePortal. Not part of the public MDN
+      surface; tracked so the inventory stays complete.
+    tests: []
+
+  activityLog:
+    status: unsupported
+    why: >
+      Gecko privileged-add-on debugging API (activityLog permission). Requires a
+      privileged add-on type Iridium does not have.
+    tests: []
+
+  telemetry:
+    status: unsupported
+    why: Gecko privileged-add-on API (telemetry permission); not part of the MDN surface.
+    tests: []
+
+  geckoProfiler:
+    status: unsupported
+    why: >
+      Gecko profiling API (geckoProfiler permission). Exposes profiler
+      internals with no Iridium equivalent.
+    tests: []
+
+  trial:
+    status: unsupported
+    why: >
+      Mozilla experiment/trial API gated on the trialML permission. Iridium runs no
+      Shield trials.
+    tests: []
+
+  'trial.ml':
+    status: unsupported
+    why: Mozilla machine-learning trial API; not part of the MDN surface.
+    tests: []
+
+  experiments:
+    status: unsupported
+    why: >
+      Mozilla experiment API, admitted by the permission pattern
+      ^experiments(\.\w+)+$. Iridium has no experiment system.
+    tests: []
+
+  test:
+    status: unsupported
+    why: Gecko internal test namespace (in toolkit/, not shipped to extensions).
+    tests: []
+
+  # --- generated types ------------------------------------------------------
+
+  extensionTypes:
+    status: planned
+    notes: >
+      Types only: CSSOrigin, ExecutionWorld, ImageDetails and friends. Generated
+      from the Gecko schemas into C++ types, with no runtime behaviour of their own.
+    tests: []
+
+  types:
+    status: planned
+    notes: >
+      types.BrowserSetting, types.LevelOfControl and types.SettingScope, used by
+      browserSettings, privacy and browsingData. Required before those can be
+      implemented honestly.
+    tests: []
+
+  events:
+    status: planned
+    notes: >
+      The base types every event namespace inherits from. events.Event
+      (addListener/removeListener/hasListener) and events.Rule (the extraInfoSpec
+      filter form) must be modelled by the event router before any event can be
+      dispatched; the inventory records them as types rather than as members, so
+      they are covered by this status rather than by a `missing` list.
+    tests: []
+
+# --------------------------------------------------------------------------
+# manifest.json keys
+# --------------------------------------------------------------------------
+manifest:
+
+  manifest_version:
+    status: full
+    tests: [extensions-manifest]
+    notes: >
+      2 and 3 are both accepted and 1 and anything above 3 is rejected with a
+      reason. It also gates which keys apply.
+
+  name:
+    status: partial
+    missing: [name]
+    notes: >
+      Required, trimmed, rejected when empty, and asserted by the manifest test.
+      A localized name (a __MSG_ token resolved through _locales) is not
+      substituted, which is why this is partial rather than full.
+    tests: [extensions-manifest]
+
+  version:
+    status: partial
+    missing: [version]
+    notes: >
+      Required and rejected when empty. The specification's format rule (one to
+      four dot-separated integers, no leading zeros, each at most 65535) is not
+      validated, so a malformed version is accepted and surfaces later as a
+      confusing settings or update problem.
+    tests: [extensions-manifest]
+
+  description:
+    status: partial
+    missing: [description]
+    notes: >
+      Parsed into the manifest model and available through runtime.getManifest(),
+      but nothing surfaces it: the settings UI shows the name and version only.
+      The manifest test does not assert it yet either, which is why this is not
+      full.
+    tests: []
+
+  author:
+    status: planned
+    missing: [author]
+    notes: >
+      Parsed only as part of the raw manifest, never modelled and never shown.
+      Nothing consumes it, so this is planned rather than full.
+    tests: []
+
+  short_name:
+    status: planned
+    missing: [short_name]
+    tests: []
+    notes: Parsed only as part of the raw manifest.
+
+  version_name:
+    status: planned
+    missing: [version_name]
+    tests: []
+    notes: >
+      Parsed only as part of the raw manifest. It matters for the settings UI and
+      for update comparison, neither of which reads it yet.
+
+  homepage_url:
+    status: planned
+    missing: [homepage_url]
+    tests: []
+    notes: Parsed only as part of the raw manifest.
+
+  background:
+    status: partial
+    missing: [page, type]
+    notes: >
+      scripts, service_worker and persistent are parsed faithfully, and the MV2/MV3
+      forms are kept apart. No background context is hosted, so neither MV2
+      background pages nor MV3 service workers run: the key is read and inert.
+      `type: module` and a background `page` are not modelled.
+    tests: [extensions-manifest]
+
+  content_scripts:
+    status: partial
+    missing: [exclude_globs, include_globs, match_about_blank,
+              match_origin_as_fallback, world]
+    notes: >
+      matches, exclude_matches, js, css and all_frames are honoured end to end
+      (webview-extension proves a script from an on-disk extension runs in a
+      matching page). run_at is validated but only document_start is real: there is
+      no document_idle, and document_end is not implemented, so the value is
+      accepted and then ignored. Scripts run in the page's world, not an isolated
+      one, which is a security-model violation rather than a missing feature.
+    tests: [extensions-manifest, webview-extension]
+
+  permissions:
+    status: partial
+    notes: >
+      API permissions, host permissions and activeTab are separated from one
+      mixed MV2 array, host patterns are validated at load time, and the split is
+      asserted by the manifest test. What is missing is the activeTab grant flow
+      and any runtime request path; the dispatcher consults the result.
+    tests: [extensions-manifest, extensions-api]
+
+  optional_permissions:
+    status: partial
+    notes: >
+      Parsed, deduplicated against the required list, split into API names and
+      host patterns, and enforceable: the settings UI toggles them and the API
+      layer refuses a call whose permission is not held. No runtime request, and
+      no prompt.
+    tests: [extensions-manifest, extensions-registry]
+
+  host_permissions:
+    status: partial
+    notes: >
+      Parsed for MV3 and validated as match patterns. It is not consulted at any
+      dispatch boundary yet, so a host permission currently grants nothing: tab
+      url/title filtering, cross-origin fetch and content-script injection are all
+      still gated on the API permission instead.
+    tests: [extensions-manifest]
+
+  optional_host_permissions:
+    status: planned
+    missing: [optional_host_permissions]
+    notes: >
+      Parsed and deduplicated (the existing test covers the MV2 optional path),
+      but there is no runtime request or grant flow, so it cannot be granted.
+    tests: [extensions-manifest]
+
+  action:
+    status: partial
+    missing: [default_icon, default_popup]
+    notes: >
+      present, default_title and the icons map are parsed; default_popup is parsed
+      but has nowhere to open. No toolbar surface exists.
+    tests: [extensions-manifest]
+
+  browser_action:
+    status: partial
+    missing: [default_icon, default_popup]
+    notes: >
+      MV2 key. The registry reads it through the same Action struct as `action`,
+      so default_title and icons work; nothing renders them.
+    tests: [extensions-manifest]
+
+  page_action:
+    status: planned
+    missing: [default_icon, default_popup]
+    notes: >
+      Not parsed at all today: the Action struct is only filled from the `action`
+      key. Adding the key is trivial, but a page action needs an address-bar
+      surface to be worth having.
+    tests: []
+
+  sidebar_action:
+    status: planned
+    missing: [sidebar_action]
+    notes: Needs the right sidebar UI and an extension page host.
+    tests: []
+
+  options_ui:
+    status: partial
+    missing: [browser_style, open_in_tab]
+    notes: >
+      The page is parsed (the MV3 manifest test asserts options_ui.page lands in
+      optionsPage()); browser_style and open_in_tab are ignored, and there is no
+      extension page host to open it in.
+    tests: [extensions-manifest]
+
+  options_page:
+    status: partial
+    missing: [options_page]
+    notes: >
+      Parsed as the fallback when options_ui is absent, which is correct, but
+      again nothing can open it.
+    tests: [extensions-manifest]
+
+  icons:
+    status: planned
+    missing: [icons]
+    notes: >
+      The top-level icons map is not parsed. action.icons is, and the settings UI
+      uses it to pick an icon, so extension identity is visible there.
+    tests: []
+
+  devtools_page:
+    status: planned
+    missing: [devtools_page]
+    notes: >
+      Not parsed; depends on the inspector work that is currently unsupported.
+    tests: []
+
+  commands:
+    status: planned
+    missing: [commands]
+    notes: >
+      Not parsed. Commands are declared by the extension but executed by the
+      browser, so this needs the shortcut registry before the key means anything.
+    tests: []
+
+  content_security_policy:
+    status: planned
+    missing: [content_security_policy]
+    notes: >
+      Not parsed and, more importantly, not enforceable today: content scripts run
+      in the page's world, so there is no extension origin to attach a CSP to. The
+      MV2 string form and the MV3 object form both need the extension page host.
+    tests: []
+
+  web_accessible_resources:
+    status: planned
+    missing: [use_dynamic_url]
+    notes: >
+      Not parsed. Both the MV2 string array and the MV3 object array with matches
+      and extension_ids need an extension scheme and a per-extension resource
+      server before they can mean anything.
+    tests: []
+
+  browser_specific_settings:
+    status: partial
+    missing: [gecko_android, strict_min_version, strict_max_version]
+    notes: >
+      gecko.id is honoured: the registry uses it as the extension identity when
+      present, which is what lets an author pin an id across installs. Nothing
+      else in the key is read, and no signature is verified.
+    tests: [extensions-registry]
+
+  default_locale:
+    status: planned
+    missing: [default_locale]
+    notes: >
+      Not parsed. It must be required whenever _locales exists and forbidden
+      otherwise, which only matters once i18n reads _locales.
+    tests: []
+
+  omnibox:
+    status: planned
+    missing: [keyword]
+    notes: Not parsed; depends on the omnibox API.
+    tests: []
+
+  theme:
+    status: planned
+    missing: [theme]
+    notes: Not parsed; depends on the theme API.
+    tests: []
+
+  sandbox:
+    status: planned
+    missing: [sandbox]
+    notes: >
+      Not parsed. A sandboxed extension page needs a restricted context with a
+      narrower API surface, which is an execution-context concept.
+    tests: []
+
+  incognito:
+    status: planned
+    missing: [incognito]
+    notes: >
+      Not acted on. Iridium has no private mode, and incognito changes both the
+      storage partition and the API surface, so this is deliberately deferred.
+    tests: []
+
+  declarative_net_request:
+    status: unsupported
+    missing: [rule_resources]
+    why: >
+      Static DNR rulesets are loaded by the engine at startup, which is inside the
+      network process; same gap as declarativeNetRequest itself.
+    tests: []
+
+  user_scripts:
+    status: planned
+    missing: [api_script]
+    notes: Not parsed; depends on the userScripts API, which is unsupported.
+    tests: []
+
+  storage:
+    status: planned
+    missing: [managed_schema]
+    notes: >
+      Not parsed. This is the key that makes storage.managed readable from
+      administrator policy, and Iridium has no policy provider yet.
+    tests: []
+
+  externally_connectable:
+    status: unsupported
+    missing: [externally_connectable]
+    why: >
+      Its purpose is to let a web page message an extension. That needs a
+      publicly reachable message endpoint, which is a security decision that has
+      not been made (see security-model.md), and no such endpoint exists.
+      Firefox does not support the key either.
+    tests: []
+
+  protocol_handlers:
+    status: planned
+    missing: [protocol_handlers]
+    notes: Firefox-only key; needs a protocol registration concept in browser core.
+    tests: []
+
+  chrome_url_overrides:
+    status: planned
+    missing: [bookmarks, history, homepage, newtab, sidepanel]
+    notes: >
+      Not parsed. Overriding an internal page requires the internal page to be
+      modelled as something that can be replaced.
+    tests: []
+
+  chrome_settings_overrides:
+    status: planned
+    missing: [homepage, search_provider]
+    notes: >
+      Not parsed, and the settings it overrides (search engines, homepage) have no
+      settings owner yet.
+    tests: []
+
+  dictionaries:
+    status: planned
+    missing: [dictionaries]
+    notes: Firefox-only key; needs spell-check dictionaries in the platform layer.
+    tests: []
+
+  side_panel:
+    status: unsupported
+    missing: [default_path]
+    why: >
+      Chrome-only key, the counterpart of sidebar_action, and part of the same
+      Chrome-only UI surface Iridium is not adopting. Listed so the inventory
+      stays complete.
+    tests: []
+
+  developer:
+    status: planned
+    missing: [developer]
+    notes: >
+      Firefox-only author declaration for a packaged extension. Iridium installs
+      unpacked directories, so it has nothing to declare itself as.
+    tests: []
+
+  dark_theme:
+    status: planned
+    missing: [dark_theme]
+    notes: >
+      Firefox-specific manifest key that selects a packaged theme. Follows the
+      theme API, which does not exist.
+    tests: []
+
+  theme_experiment:
+    status: planned
+    missing: [theme_experiment]
+    notes: >
+      Firefox-only experiment key, and Iridium runs no experiments. Listed so the
+      inventory stays complete.
+    tests: []

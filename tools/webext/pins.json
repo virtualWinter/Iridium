@@ -1,0 +1,53 @@
+{
+  "_comment": [
+    "Pinned upstream sources for the WebExtensions inventory.",
+    "Everything here is fetched by tools/webext/fetch.py and reduced to",
+    "docs/extensions/data/*.json. Bumping a pin is the only supported way to",
+    "refresh the inventory, so a doc change is always traceable to an upstream",
+    "commit rather than to someone's memory."
+  ],
+  "bcd": {
+    "name": "mdn/browser-compat-data",
+    "ref": "7e64a56d3689f03f7e0ad911f603cf71c5b3c7c4",
+    "committed": "2026-10-01T12:11:13+02:00",
+    "license": "CC0-1.0",
+    "paths": ["webextensions/api", "webextensions/manifest", "webextensions/match_patterns.json"]
+  },
+  "mdn_content": {
+    "name": "mdn/content",
+    "ref": "bacd00c353f643d8f5be0ce769015b1a66b4251a",
+    "committed": "2026-09-30T12:53:27-07:00",
+    "license": "CC-BY-SA-2.5",
+    "paths": [
+      "files/en-us/mozilla/add-ons/webextensions/api",
+      "files/en-us/mozilla/add-ons/webextensions/manifest.json",
+      "files/en-us/mozilla/add-ons/webextensions/match_patterns",
+      "files/en-us/mozilla/add-ons/webextensions/background_scripts",
+      "files/en-us/mozilla/add-ons/webextensions/content_scripts",
+      "files/en-us/mozilla/add-ons/webextensions/native_messaging",
+      "files/en-us/mozilla/add-ons/webextensions/native_manifests",
+      "files/en-us/mozilla/add-ons/webextensions/chrome_incompatibilities",
+      "files/en-us/mozilla/add-ons/webextensions/differences_between_api_implementations",
+      "files/en-us/mozilla/add-ons/webextensions/content_security_policy",
+      "files/en-us/mozilla/add-ons/webextensions/internationalization",
+      "files/en-us/mozilla/add-ons/webextensions/working_with_files"
+    ]
+  },
+  "gecko": {
+    "name": "mozilla-firefox/firefox",
+    "ref": "5652fa431b5406cc1f4a4638a0a2480504870c6d",
+    "committed": "2026-10-01T03:26:08Z",
+    "license": "MPL-2.0",
+    "comment": [
+      "toolkit/components/extensions/schemas holds the platform-neutral API",
+      "definitions (namespaces, functions, events, permissions, MV bounds);",
+      "browser/components/extensions/schemas holds the ones that depend on",
+      "browser UI (tabs, windows, bookmarks, devtools, ...). Both are needed for",
+      "a complete namespace list."
+    ],
+    "paths": [
+      "toolkit/components/extensions/schemas",
+      "browser/components/extensions/schemas"
+    ]
+  }
+}

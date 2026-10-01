@@ -1,0 +1,1863 @@
+{
+  "_generated_by": "tools/webext/inventory.py",
+  "_sources": {
+    "bcd": {
+      "committed": "2026-10-01T12:11:13+02:00",
+      "license": "CC0-1.0",
+      "ref": "7e64a56d3689f03f7e0ad911f603cf71c5b3c7c4",
+      "repo": "mdn/browser-compat-data"
+    },
+    "gecko": {
+      "committed": "2026-10-01T03:26:08Z",
+      "license": "MPL-2.0",
+      "ref": "5652fa431b5406cc1f4a4638a0a2480504870c6d",
+      "repo": "mozilla-firefox/firefox"
+    },
+    "mdn_content": {
+      "committed": "2026-09-30T12:53:27-07:00",
+      "license": "CC-BY-SA-2.5",
+      "ref": "bacd00c353f643d8f5be0ce769015b1a66b4251a",
+      "repo": "mdn/content"
+    }
+  },
+  "keys": [
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "action",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/action",
+      "note": "Manifest V3 and above",
+      "properties": [
+        "default_area",
+        "default_icon",
+        "default_popup",
+        "default_title",
+        "theme_icons"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "88"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "109"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "15.4"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "author",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/author",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "52"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Not displayed in Safari Extensions settings."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "background",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background",
+      "note": "",
+      "properties": [
+        "page",
+        "persistent",
+        "preferred_environment",
+        "scripts",
+        "service_worker",
+        "type"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "browser_action",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_action",
+      "note": "Manifest V2 only",
+      "properties": [
+        "browser_style",
+        "default_area",
+        "default_icon",
+        "default_popup",
+        "default_title",
+        "theme_icons"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V2 only.",
+            "If an extension defines a browser action, it is not allowed to define a page action as well."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V2 only."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V2 only.",
+            "If an extension defines a browser action, it is not allowed to define a page action as well."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "browser_specific_settings",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings",
+      "note": "",
+      "properties": [
+        "gecko",
+        "gecko_android",
+        "safari"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Before Firefox 48, this property was required."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "42"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "chrome_settings_overrides",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/chrome_settings_overrides",
+      "note": "",
+      "properties": [
+        "homepage",
+        "search_provider",
+        "startup_pages"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available on macOS and Windows only."
+          ],
+          "partial": true,
+          "supported": true,
+          "version_added": "35"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "55"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "chrome_url_overrides",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/chrome_url_overrides",
+      "note": "",
+      "properties": [
+        "bookmarks",
+        "history",
+        "newtab"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "54"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "15"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "commands",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/commands",
+      "note": "",
+      "properties": [
+        "F1-F12",
+        "MediaNextTrack",
+        "MediaPlayPause",
+        "MediaPrevTrack",
+        "MediaStop",
+        "MoreSecondaryModifiers",
+        "_execute_action",
+        "_execute_browser_action",
+        "_execute_page_action",
+        "_execute_sidebar_action",
+        "global"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "25"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "content_scripts",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/content_scripts",
+      "note": "",
+      "properties": [
+        "all_frames",
+        "css",
+        "css_origin",
+        "exclude_globs",
+        "exclude_matches",
+        "include_globs",
+        "js",
+        "match_about_blank",
+        "match_origin_as_fallback",
+        "matches",
+        "run_at",
+        "world"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Content scripts are not applied to tabs already open when the extension is loaded."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Content scripts are not applied to tabs until the user grants permission via the extension's access popover in the toolbar."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "content_security_policy",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/content_security_policy",
+      "note": "",
+      "properties": [
+        "extension_pages",
+        "sandbox"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Until Chrome 110, the `object-src` directive was required with a secure source. From Chrome 111, the `object-src` directive is optional."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Firefox does not support `http://127.0.0.1'` or `http://localhost` as script sources; they must be served over HTTPS.",
+            "Until Firefox 105, the `object-src` directive was required with a secure source. From Firefox 106, the `object-src` directive is optional."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "There is no requirement to include the `object-src` directive."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "dark_theme",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/dark_theme",
+      "note": "",
+      "properties": [
+        "colors",
+        "images",
+        "properties"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "68"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "declarative_net_request",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/declarative_net_request",
+      "note": "",
+      "properties": [
+        "rule_resources"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "84"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "113"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "15"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "default_locale",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/default_locale",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "description",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/description",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "developer",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/developer",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "52"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "devtools_page",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/devtools_page",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "54"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "16"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "dictionaries",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/dictionaries",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "61"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "externally_connectable",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/externally_connectable",
+      "note": "Not supported in Firefox",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226467"
+        },
+        "firefox": {
+          "supported": false
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": "https://webkit.org/b/269299",
+          "notes": [
+            "Only supports the `matches` property."
+          ],
+          "partial": true,
+          "supported": true,
+          "version_added": "15.4"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "homepage_url",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/homepage_url",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Not displayed in Safari Extensions settings."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "host_permissions",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/host_permissions",
+      "note": "Manifest V3 and above",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "88"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "109"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "15.4"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "icons",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/icons",
+      "note": "",
+      "properties": [
+        "svg_icons"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "incognito",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/incognito",
+      "note": "",
+      "properties": [
+        "not_allowed",
+        "spanning",
+        "split"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "manifest_version",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/manifest_version",
+      "note": "",
+      "properties": [
+        "v2",
+        "v3"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "4"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "name",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/name",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "omnibox",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/omnibox",
+      "note": "",
+      "properties": [
+        "keyword"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226458"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "52"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "optional_host_permissions",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/optional_host_permissions",
+      "note": "Manifest V3 and above",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "102"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "128"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Available for use in Manifest V3 or later."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "15.5"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "optional_permissions",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/optional_permissions",
+      "note": "",
+      "properties": [
+        "activeTab",
+        "alarms",
+        "background",
+        "bookmarks",
+        "browserSettings",
+        "browsingData",
+        "clipboardRead",
+        "clipboardWrite",
+        "contentSettings",
+        "contextMenus",
+        "cookies",
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
+        "declarativeNetRequestWithHostAccess",
+        "devtools",
+        "dns",
+        "downloads",
+        "downloads_open",
+        "find",
+        "geolocation",
+        "history",
+        "identity",
+        "idle",
+        "management",
+        "menus",
+        "nativeMessaging",
+        "notifications",
+        "pageCapture",
+        "pkcs11",
+        "privacy",
+        "proxy",
+        "publicSuffix",
+        "scripting",
+        "search",
+        "sessions",
+        "storage",
+        "tabGroups",
+        "tabHide",
+        "tabs",
+        "topSites",
+        "unlimitedStorage",
+        "userScripts",
+        "webNavigation",
+        "webRequest",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "webRequestFilterResponse_serviceWorkerScript"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "18"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "55"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "options_page",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/options_page",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226465"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "126"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "options_ui",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/options_ui",
+      "note": "",
+      "properties": [
+        "browser_style",
+        "open_in_tab",
+        "page"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "40"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "page_action",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/page_action",
+      "note": "Manifest V2 only in Chrome",
+      "properties": [
+        "browser_style",
+        "default_icon",
+        "default_popup",
+        "default_title",
+        "hide_matches",
+        "pinned",
+        "show_matches"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Since Chrome 49, page actions are displayed on the toolbar, rather than in the address bar.",
+            "If an extension defines a page action, it is not allowed to define a browser action as well.",
+            "Available for use in Manifest V2 only."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "If an extension defines a page action, it is not allowed to define a browser action as well.",
+            "Available for use in Manifest V2 only."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "permissions",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/permissions",
+      "note": "",
+      "properties": [
+        "activeTab",
+        "alarms",
+        "background",
+        "bookmarks",
+        "browserSettings",
+        "browsingData",
+        "captivePortal",
+        "clipboardRead",
+        "clipboardWrite",
+        "contentSettings",
+        "contextMenus",
+        "contextualIdentities",
+        "cookies",
+        "debugger",
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback",
+        "declarativeNetRequestWithHostAccess",
+        "devtools",
+        "dns",
+        "downloads",
+        "downloads_open",
+        "find",
+        "geolocation",
+        "history",
+        "identity",
+        "idle",
+        "management",
+        "menus",
+        "nativeMessaging",
+        "notifications",
+        "pageCapture",
+        "pkcs11",
+        "privacy",
+        "proxy",
+        "scripting",
+        "search",
+        "sessions",
+        "sidePanel",
+        "storage",
+        "tabGroups",
+        "tabHide",
+        "tabs",
+        "theme",
+        "topSites",
+        "unlimitedStorage",
+        "userScripts",
+        "webNavigation",
+        "webRequest",
+        "webRequestAuthProvider",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "webRequestFilterResponse_serviceWorkerScript"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226410"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "protocol_handlers",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/protocol_handlers",
+      "note": "Firefox only",
+      "properties": [
+        "dat",
+        "dweb",
+        "ftp",
+        "gopher",
+        "ipfs",
+        "ipns",
+        "matrix",
+        "ssb"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "54"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "sandbox",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/sandbox",
+      "note": "",
+      "properties": [
+        "content_security_policy",
+        "pages"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "21"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "154"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "short_name",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/short_name",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": false,
+      "key": "side_panel",
+      "mdn_url": null,
+      "note": "",
+      "properties": [
+        "default_path"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "114"
+        },
+        "firefox": {
+          "supported": false
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "sidebar_action",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/sidebar_action",
+      "note": "",
+      "properties": [
+        "browser_style",
+        "default_icon",
+        "default_panel",
+        "default_title",
+        "open_at_install"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "54"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "storage",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/storage",
+      "note": "Not supported in Firefox",
+      "properties": [
+        "managed_schema"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226480"
+        },
+        "firefox": {
+          "supported": false
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "theme",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/theme",
+      "note": "",
+      "properties": [
+        "colors",
+        "images",
+        "properties"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226459"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "55"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "theme_experiment",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/theme_experiment",
+      "note": "",
+      "properties": [
+        "colors",
+        "images",
+        "properties"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "63"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "user_scripts",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/user_scripts",
+      "note": "Manifest V2 only",
+      "properties": [
+        "api_script"
+      ],
+      "support": {
+        "chrome": {
+          "supported": false
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Required for the legacy version of [`userScripts`](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/userScripts_legacy), which is only available for extensions using Manifest V2."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "68"
+        },
+        "safari": {
+          "supported": false
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "version",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/version",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [
+            "Valid Chrome versions are a subset of valid Firefox versions."
+          ],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "version_name",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/version_name",
+      "note": "",
+      "properties": [],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226465"
+        },
+        "firefox": {
+          "supported": false
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    },
+    {
+      "in_bcd": true,
+      "in_mdn": true,
+      "key": "web_accessible_resources",
+      "mdn_url": "https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/web_accessible_resources",
+      "note": "",
+      "properties": [
+        "extension_ids",
+        "matches",
+        "resources",
+        "use_dynamic_url"
+      ],
+      "support": {
+        "chrome": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "\u226454"
+        },
+        "firefox": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "48"
+        },
+        "safari": {
+          "flags": [],
+          "impl_url": null,
+          "notes": [],
+          "partial": false,
+          "supported": true,
+          "version_added": "14"
+        }
+      }
+    }
+  ],
+  "permissions": {
+    "all": [
+      "idle",
+      "cookies",
+      "menus.overrideContext",
+      "publicSuffix",
+      "scripting",
+      "search",
+      "tabGroups",
+      "activeTab",
+      "webRequest",
+      "webRequestAuthProvider",
+      "webRequestBlocking",
+      "webRequestFilterResponse",
+      "webRequestFilterResponse.serviceWorkerScript",
+      "mozillaAddons",
+      "activityLog",
+      "networkStatus",
+      "telemetry",
+      "alarms",
+      "storage",
+      "unlimitedStorage",
+      "captivePortal",
+      "contextualIdentities",
+      "declarativeNetRequestWithHostAccess",
+      "dns",
+      "geckoProfiler",
+      "identity",
+      "menus",
+      "contextMenus",
+      "theme",
+      "clipboardRead",
+      "clipboardWrite",
+      "geolocation",
+      "notifications",
+      "bookmarks",
+      "browserSettings",
+      "browsingData",
+      "declarativeNetRequestFeedback",
+      "devtools",
+      "downloads",
+      "downloads.open",
+      "find",
+      "history",
+      "management",
+      "pkcs11",
+      "privacy",
+      "proxy",
+      "nativeMessaging",
+      "sessions",
+      "tabs",
+      "tabHide",
+      "topSites",
+      "webNavigation",
+      "declarativeNetRequest",
+      "pattern:^experiments(\\.\\w+)+$"
+    ],
+    "classes": {
+      "OptionalPermission": [
+        "idle",
+        "cookies",
+        "menus.overrideContext",
+        "publicSuffix",
+        "scripting",
+        "search",
+        "tabGroups",
+        "activeTab",
+        "webRequest",
+        "webRequestAuthProvider",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "webRequestFilterResponse.serviceWorkerScript",
+        "clipboardRead",
+        "clipboardWrite",
+        "geolocation",
+        "notifications",
+        "bookmarks",
+        "browserSettings",
+        "browsingData",
+        "declarativeNetRequestFeedback",
+        "devtools",
+        "downloads",
+        "downloads.open",
+        "find",
+        "history",
+        "management",
+        "pkcs11",
+        "privacy",
+        "proxy",
+        "nativeMessaging",
+        "sessions",
+        "tabs",
+        "tabHide",
+        "topSites",
+        "webNavigation"
+      ],
+      "Permission": [
+        "idle",
+        "cookies",
+        "menus.overrideContext",
+        "publicSuffix",
+        "scripting",
+        "search",
+        "tabGroups",
+        "activeTab",
+        "webRequest",
+        "webRequestAuthProvider",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "webRequestFilterResponse.serviceWorkerScript",
+        "mozillaAddons",
+        "activityLog",
+        "networkStatus",
+        "telemetry",
+        "alarms",
+        "storage",
+        "unlimitedStorage",
+        "captivePortal",
+        "contextualIdentities",
+        "declarativeNetRequestWithHostAccess",
+        "dns",
+        "geckoProfiler",
+        "identity",
+        "menus",
+        "contextMenus",
+        "theme",
+        "clipboardRead",
+        "clipboardWrite",
+        "geolocation",
+        "notifications",
+        "bookmarks",
+        "browserSettings",
+        "browsingData",
+        "declarativeNetRequestFeedback",
+        "devtools",
+        "downloads",
+        "downloads.open",
+        "find",
+        "history",
+        "management",
+        "pkcs11",
+        "privacy",
+        "proxy",
+        "nativeMessaging",
+        "sessions",
+        "tabs",
+        "tabHide",
+        "topSites",
+        "webNavigation",
+        "declarativeNetRequest",
+        "pattern:^experiments(\\.\\w+)+$"
+      ],
+      "PermissionPrivileged": [
+        "mozillaAddons",
+        "activityLog",
+        "networkStatus",
+        "telemetry"
+      ]
+    },
+    "extends": {
+      "OptionalOnlyPermission": [
+        "trialML",
+        "userScripts"
+      ],
+      "OptionalPermission": [
+        "bookmarks",
+        "browserSettings",
+        "browsingData",
+        "declarativeNetRequestFeedback",
+        "devtools",
+        "downloads",
+        "downloads.open",
+        "find",
+        "history",
+        "management",
+        "pkcs11",
+        "privacy",
+        "proxy",
+        "nativeMessaging",
+        "sessions",
+        "tabs",
+        "tabHide",
+        "topSites",
+        "webNavigation"
+      ],
+      "OptionalPermissionNoPrompt": [
+        "cookies",
+        "menus.overrideContext",
+        "publicSuffix",
+        "scripting",
+        "search",
+        "tabGroups",
+        "activeTab",
+        "webRequest",
+        "webRequestAuthProvider",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "webRequestFilterResponse.serviceWorkerScript"
+      ],
+      "Permission": [
+        "declarativeNetRequest",
+        "pattern:^experiments(\\.\\w+)+$"
+      ],
+      "PermissionNoPrompt": [
+        "captivePortal",
+        "contextualIdentities",
+        "declarativeNetRequestWithHostAccess",
+        "dns",
+        "geckoProfiler",
+        "identity",
+        "menus",
+        "contextMenus",
+        "theme"
+      ],
+      "PermissionPrivileged": [
+        "activityLog",
+        "networkStatus",
+        "telemetry"
+      ]
+    }
+  }
+}
