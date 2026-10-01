@@ -156,8 +156,8 @@ Passing a URL opens it in the first tab. Ctrl+T opens another, Ctrl+H opens the
 history pane and Ctrl+, opens settings, which manages extensions and profiles.
 
 Settings is a frameless window with the same rounded shell, palette, window
-controls and drag region as the browser window, with the category rail against
-the right edge where the browser's sidebar is. Preferences take effect as they
+controls and drag region as the browser window. Its category rail is on the
+left; window controls remain at the top-right. Preferences take effect as they
 are changed — there is no Apply — and the homepage and search address both
 offer a reset to the built-in default. A homepage that is not a web address is
 reported where it is typed, because the alternative is a search engine opening

@@ -21,6 +21,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QFrame>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QSet>
@@ -162,16 +163,9 @@ int main(int argc, char** argv)
     check(settings.findChild<QWidget*>(QStringLiteral("settingsCategories")) != nullptr,
         "the category rail exists and is named for the shared stylesheet");
 
-    // The window controls belong at the TOP of the window, in the rail's header
-    // where a title bar's controls would be. They were once appended to the
-    // rail's own layout, which put them at the bottom below the category list,
-    // while a comment in the same function claimed they were in the header.
-    //
-    // Checked after the first show() below rather than here, because a layout has
-    // no geometry until it has been activated: measured before that, every child
-    // reports y=0 and the comparison passes for the wrong reason. Asserted by
-    // geometry rather than by widget name, since the whole point is where it
-    // ended up on screen.
+    // Categories belong on the left, but the controls must stay top-right.
+    // Measure after show(): before layout activation, child positions are not
+    // meaningful and cannot catch an incorrectly placed rail or header.
     auto* decoration = settings.findChild<WindowDecoration*>();
     check(decoration != nullptr,
         "the settings window has the system window controls");
@@ -183,33 +177,59 @@ int main(int argc, char** argv)
         QStringLiteral("Recorded While Hidden"));
     settings.show();
     app.processEvents();
-    settings.hide();
 
     if (decoration) {
         auto* header = decoration->parentWidget();
+        auto* rail = settings.findChild<QWidget*>(QStringLiteral("settingsCategories"));
+        auto* content = settings.findChild<QFrame*>(QStringLiteral("settingsContent"));
         auto* list = settings.findChild<QListWidget*>(
             QStringLiteral("settingsCategoryList"));
-        check(header != nullptr, "the controls are parented to a header");
+        check(header && header == settings.findChild<QWidget*>(QStringLiteral("settingsHeader")),
+            "the controls are parented to the independent window header");
+        check(rail != nullptr, "the category rail exists");
+        check(content != nullptr, "the settings content exists");
         check(list != nullptr, "the category list exists");
 
-        if (header && list) {
-            // Mapped into the dialog's own coordinates, because each widget's y
-            // is relative to its own parent and the rail is itself inset, so
-            // comparing raw y values across parents would not mean anything.
-            QWidget* window = &settings;
-            const QPoint headerAt = header->mapTo(window, QPoint(0, 0));
-            const QPoint listAt = list->mapTo(window, QPoint(0, 0));
-            const QPoint controlsAt = decoration->mapTo(window, QPoint(0, 0));
+        if (header && rail && content && list && panes) {
+            for (const QSize size : { QSize(880, 600), QSize(680, 480), QSize(1100, 760) }) {
+                settings.resize(size);
+                app.processEvents();
+                const QPoint headerAt = header->mapTo(&settings, QPoint());
+                const QPoint listAt = list->mapTo(&settings, QPoint());
+                const QPoint controlsAt = decoration->mapTo(&settings, QPoint());
+                const QPoint railAt = rail->mapTo(&settings, QPoint());
+                const QPoint contentAt = content->mapTo(&settings, QPoint());
+                const QPoint panesAt = panes->mapTo(&settings, QPoint());
 
-            check(controlsAt.y() >= 0 && controlsAt.y() < 80,
-                "the window controls are at the top of the window, at y="
-                    + std::to_string(controlsAt.y()));
-            check(headerAt.y() + header->height() <= listAt.y(),
-                "the header sits above the category list: header ends at y="
-                    + std::to_string(headerAt.y() + header->height())
-                    + ", the list starts at y=" + std::to_string(listAt.y()));
+                check(railAt.x() == 0 && rail->width() == 200,
+                    "the settings categories stay against the left edge after resizing");
+                check(contentAt.x() == railAt.x() + rail->width()
+                        && contentAt.x() + content->width() == settings.width(),
+                    "the settings content fills the space to the right of the categories");
+                check(headerAt == QPoint() && header->width() == settings.width(),
+                    "the window header is independent of the category rail");
+                check(!rail->isAncestorOf(decoration),
+                    "moving the categories cannot move the window controls");
+                check(controlsAt.y() == 6
+                        && settings.width() - controlsAt.x() - decoration->width() == 8,
+                    "the window controls keep their existing top-right insets");
+                check(headerAt.y() + header->height() <= listAt.y()
+                        && headerAt.y() + header->height() <= panesAt.y(),
+                    "categories and content stay below the window controls");
+            }
+
+            settings.resize(880, 600);
+            settings.selectCategory(QString(SettingsWindow::generalCategory()));
+            app.processEvents();
+            if (argc > 1) {
+                const QString directory = QString::fromLocal8Bit(argv[1]);
+                check(QDir().mkpath(directory), "the settings screenshot directory exists");
+                check(settings.grab().save(directory + QStringLiteral("/settings-left-sidebar.png")),
+                    "the settings layout screenshot is saved");
+            }
         }
     }
+    settings.hide();
 
     // Scoped to the history page, because the extensions page has a list of its
     // own and picking any list with rows would test the wrong one.

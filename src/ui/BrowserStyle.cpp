@@ -113,13 +113,18 @@ QString sharedStyleSheet(const QPalette& palette)
     return QStringLiteral(R"(
         QWidget#browserRoot, QWidget#settingsRoot {
             background: %1; border-radius: 14px; }
-        QWidget#arcSidebar, QWidget#settingsCategories {
+        QWidget#arcSidebar {
             background: %1; border-top-right-radius: 14px;
             border-bottom-right-radius: 14px; }
+        QWidget#settingsCategories {
+            background: %1; border-top-left-radius: 14px;
+            border-bottom-left-radius: 14px; }
         QFrame#rendererFrame, QFrame#settingsContent {
-            border-width: 3px; border-right-width: 0px; border-style: solid;
+            border-width: 3px; border-style: solid;
             border-color: %1; border-radius: 11px;
             background: %1; }
+        QFrame#rendererFrame { border-right-width: 0px; }
+        QFrame#settingsContent { border-left-width: 0px; }
         QStackedWidget#rendererPages, QStackedWidget#settingsPanes {
             background: palette(window); border-radius: 8px; }
         QLabel#noTabsState, QWidget#settingsDetails {

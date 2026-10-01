@@ -61,50 +61,36 @@ void SettingsWindow::buildUi()
     // rounded background on, so it is not the dialog itself.
     auto* root = new QWidget(this);
     root->setObjectName(QStringLiteral("settingsRoot"));
-    auto* rootLayout = new QHBoxLayout(root);
+    auto* rootLayout = new QVBoxLayout(root);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    // The pane goes in a bordered frame inset from the shell, the way the page
-    // is inset from the window edge in the browser window. It is added first so
-    // the rail takes the right edge, matching where the browser's sidebar sits.
-    auto* content = new QFrame(root);
-    content->setObjectName(QStringLiteral("settingsContent"));
-    auto* contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(14, 12, 14, 14);
-    contentLayout->setSpacing(0);
-
-    m_panes = new QStackedWidget(content);
-    m_panes->setObjectName(QStringLiteral("settingsPanes"));
-    contentLayout->addWidget(m_panes, 1);
-    rootLayout->addWidget(content, 1);
-
-    // The category rail, against the right edge like the browser sidebar.
-    auto* rail = new QWidget(root);
-    rail->setObjectName(QStringLiteral("settingsCategories"));
-    rail->setFixedWidth(200);
-    auto* railLayout = new QVBoxLayout(rail);
-    railLayout->setContentsMargins(8, 6, 8, 10);
-    railLayout->setSpacing(10);
-
-    // A frameless window has no title bar, so the rail header stands in for one:
-    // window controls in the corner, empty space between them to drag by. It is
-    // added to the rail layout before anything else, which is what puts it at
-    // the top of the window.
-    auto* header = new QWidget(rail);
-    // Kept, because addWindowControls parents the decoration to it and the
-    // header is otherwise a local.
-    m_railHeader = header;
+    // Keep the window controls at their existing top-right inset, independently
+    // of which edge holds the categories.
+    auto* header = new QWidget(root);
+    header->setObjectName(QStringLiteral("settingsHeader"));
     auto* headerLayout = new QHBoxLayout(header);
-    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setContentsMargins(8, 6, 8, 0);
     headerLayout->setSpacing(4);
-    railLayout->addWidget(header);
-
     auto* dragHandle = m_chrome->dragHandle();
     dragHandle->setParent(header);
     dragHandle->setMinimumWidth(8);
     headerLayout->addWidget(dragHandle, 1);
     addWindowControls(headerLayout);
+    rootLayout->addWidget(header);
+
+    auto* bodyLayout = new QHBoxLayout;
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(0);
+    rootLayout->addLayout(bodyLayout, 1);
+
+    // Settings navigation is on the left; the browser's tab sidebar stays right.
+    auto* rail = new QWidget(root);
+    rail->setObjectName(QStringLiteral("settingsCategories"));
+    rail->setFixedWidth(200);
+    auto* railLayout = new QVBoxLayout(rail);
+    railLayout->setContentsMargins(8, 10, 8, 10);
+    railLayout->setSpacing(10);
 
     m_categories = new QListWidget(rail);
     m_categories->setObjectName(QStringLiteral("settingsCategoryList"));
@@ -119,7 +105,18 @@ void SettingsWindow::buildUi()
     connect(m_categories, &QListWidget::currentRowChanged,
         this, &SettingsWindow::selectCategoryByIndex);
 
-    rootLayout->addWidget(rail);
+    bodyLayout->addWidget(rail);
+
+    auto* content = new QFrame(root);
+    content->setObjectName(QStringLiteral("settingsContent"));
+    auto* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(14, 12, 14, 14);
+    contentLayout->setSpacing(0);
+
+    m_panes = new QStackedWidget(content);
+    m_panes->setObjectName(QStringLiteral("settingsPanes"));
+    contentLayout->addWidget(m_panes, 1);
+    bodyLayout->addWidget(content, 1);
 
     // A QDialog's own layout would centre this on top of the shell margins;
     // the shell is the dialog's whole content, so the margins are zero and the
@@ -188,7 +185,7 @@ void SettingsWindow::addWindowControls(QLayout* layout)
     const DecorationTheme::Side side =
         theme.buttons(DecorationTheme::Side::Right).isEmpty()
         ? DecorationTheme::Side::Left : DecorationTheme::Side::Right;
-    auto* decoration = new WindowDecoration(side, m_railHeader);
+    auto* decoration = new WindowDecoration(side, layout->parentWidget());
     // Initialised here rather than left to the first changeEvent: the buttons
     // are painted before any activation event arrives, and an unset
     // m_maximized would draw the restore artwork as though it were maximize.
