@@ -9,12 +9,16 @@
 #include <QImage>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPainter>
 #include <QScrollBar>
 #include <QStackedWidget>
+#include <QStyleOptionViewItem>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QToolButton>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -36,6 +40,87 @@ QColor pixelAt(const QImage& image, const QPoint& logicalPosition)
         qRound(logicalPosition.y() * image.devicePixelRatio()));
 }
 
+double contrastRatio(const QColor& a, const QColor& b)
+{
+    const auto luminance = [](const QColor& color) {
+        const auto channel = [](int value) {
+            const double srgb = value / 255.0;
+            return srgb <= 0.04045 ? srgb / 12.92 : std::pow((srgb + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(color.red()) + 0.7152 * channel(color.green())
+            + 0.0722 * channel(color.blue());
+    };
+    const double first = luminance(a);
+    const double second = luminance(b);
+    return (std::max(first, second) + 0.05) / (std::min(first, second) + 0.05);
+}
+
+double strongestContrast(const QImage& image, const QRect& area, const QColor& background)
+{
+    double result = 1.0;
+    const qreal scale = image.devicePixelRatio();
+    for (int y = qRound(area.top() * scale); y < qRound((area.bottom() + 1) * scale); ++y) {
+        for (int x = qRound(area.left() * scale); x < qRound((area.right() + 1) * scale); ++x)
+            result = std::max(result, contrastRatio(image.pixelColor(x, y), background));
+    }
+    return result;
+}
+
+void checkTabState(QListWidget* tabs, const iridium::ui::TabColors& colors,
+    bool selected, bool hovered, bool active)
+{
+    const QColor background = selected ? colors.selectedBackground
+        : (hovered ? colors.hoverBackground : colors.background);
+    const QColor foreground = selected ? colors.selectedText
+        : (hovered ? colors.hoverText : colors.text);
+    const std::string state = std::string(active ? "active " : "inactive ")
+        + (selected ? "selected " : "normal ") + (hovered ? "hovered tab" : "tab");
+    check(contrastRatio(background, foreground) >= 4.5, state + " colour pair meets 4.5:1");
+
+    // Render the shipping delegate with each real Qt state, including inactive
+    // selection, rather than assuming a foreground palette role reaches paint.
+    QStyleOptionViewItem option;
+    option.initFrom(tabs);
+    option.widget = tabs;
+    option.rect = QRect(QPoint(), tabs->visualItemRect(tabs->item(0)).size());
+    option.decorationSize = tabs->iconSize();
+    option.textElideMode = tabs->textElideMode();
+    option.state &= ~(QStyle::State_Selected | QStyle::State_MouseOver
+        | QStyle::State_Active | QStyle::State_HasFocus);
+    if (selected)
+        option.state |= QStyle::State_Selected;
+    if (hovered)
+        option.state |= QStyle::State_MouseOver;
+    if (active)
+        option.state |= QStyle::State_Active;
+    option.palette.setCurrentColorGroup(active ? QPalette::Active : QPalette::Inactive);
+
+    const qreal scale = tabs->devicePixelRatioF();
+    QImage image(qRound(option.rect.width() * scale), qRound(option.rect.height() * scale),
+        QImage::Format_ARGB32_Premultiplied);
+    image.setDevicePixelRatio(scale);
+    image.fill(colors.background);
+    {
+        QPainter painter(&image);
+        tabs->itemDelegate()->paint(&painter, option, tabs->model()->index(0, 0));
+    }
+    check(pixelAt(image, QPoint(4, option.rect.center().y())) == background,
+        state + " paints the expected background");
+    const QRect textArea(34, 4, option.rect.width() - 68, option.rect.height() - 8);
+    const QRect closeArea(option.rect.right() - 27, 4, 24, option.rect.height() - 8);
+    check(strongestContrast(image, textArea, background) >= 4.5,
+        state + " renders readable title pixels");
+    check(strongestContrast(image, closeArea, background) >= 3.0,
+        state + " renders a readable close glyph");
+    if (selected) {
+        check(contrastRatio(colors.selectedIndicator, background) >= 3.0
+                && contrastRatio(colors.selectedIndicator, colors.background) >= 3.0,
+            state + " has a contrasting selection indicator");
+        check(pixelAt(image, QPoint(0, option.rect.center().y())) == colors.selectedIndicator,
+            state + " renders the selection indicator");
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -50,6 +135,24 @@ int main(int argc, char** argv)
     QApplication app(argc, argv);
     app.setStyle(QStringLiteral("Fusion"));
     app.setFont(QFont(QStringLiteral("Sans Serif"), 10));
+
+    // Sweep the luminance boundary where choosing black versus white matters.
+    // Every input deliberately asks for unreadable, background-coloured text.
+    for (int gray = 0; gray <= 255; ++gray) {
+        QPalette palette;
+        const QColor color(gray, gray, gray);
+        palette.setColor(QPalette::Window, color);
+        palette.setColor(QPalette::WindowText, color);
+        palette.setColor(QPalette::Highlight, color);
+        const auto colors = iridium::ui::tabColors(palette);
+        check(contrastRatio(colors.background, colors.text) >= 4.5
+                && contrastRatio(colors.hoverBackground, colors.hoverText) >= 4.5
+                && contrastRatio(colors.selectedBackground, colors.selectedText) >= 4.5,
+            "all text states meet 4.5:1 at gray " + std::to_string(gray));
+        check(contrastRatio(colors.selectedIndicator, colors.background) >= 3.0
+                && contrastRatio(colors.selectedIndicator, colors.selectedBackground) >= 3.0,
+            "the selection indicator meets 3:1 at gray " + std::to_string(gray));
+    }
 
     iridium::Browser browser("about:blank");
     auto& window = browser.window();
@@ -137,30 +240,56 @@ int main(int argc, char** argv)
     }
 
     window.resize(1000, 700);
-    for (bool dark : { false, true }) {
+    struct PaletteCase {
+        const char* name;
+        const char* background;
+        const char* text;
+        const char* accent;
+    };
+    for (const auto& theme : {
+             PaletteCase { "light", "#e8e8e8", "#202020", "#365fcf" },
+             PaletteCase { "dark", "#252525", "#ededed", "#4668bf" },
+             PaletteCase { "pale-accent", "#fff6df", "#e7d9b7", "#ffdc80" },
+             PaletteCase { "dim-dark", "#1e2430", "#283142", "#263d52" },
+             PaletteCase { "mid-gray", "#777777", "#7a7a7a", "#777777" },
+             PaletteCase { "tinted", "#406080", "#506e86", "#60809c" },
+         }) {
         QPalette palette = app.palette();
-        palette.setColor(QPalette::Window, QColor(dark ? "#252525" : "#e8e8e8"));
-        palette.setColor(QPalette::Base, QColor(dark ? "#171717" : "#ffffff"));
-        palette.setColor(QPalette::Text, QColor(dark ? "#ededed" : "#202020"));
+        palette.setColor(QPalette::Window, QColor(theme.background));
+        palette.setColor(QPalette::WindowText, QColor(theme.text));
+        palette.setColor(QPalette::Base, QColor(theme.background));
+        palette.setColor(QPalette::Text, QColor(theme.text));
         palette.setColor(QPalette::ButtonText, palette.color(QPalette::Text));
-        palette.setColor(QPalette::Highlight, QColor(dark ? "#4668bf" : "#365fcf"));
-        palette.setColor(QPalette::HighlightedText, Qt::white);
-        palette.setColor(QPalette::Midlight, QColor(dark ? "#363636" : "#d4d4d4"));
+        palette.setColor(QPalette::Highlight, QColor(theme.accent));
+        palette.setColor(QPalette::HighlightedText, QColor(theme.accent));
+        palette.setColor(QPalette::Midlight, QColor(theme.background));
+        palette.setColor(QPalette::Inactive, QPalette::Text, QColor(theme.background));
+        palette.setColor(QPalette::Inactive, QPalette::WindowText, QColor(theme.background));
+        palette.setColor(QPalette::Inactive, QPalette::HighlightedText, QColor(theme.accent));
         app.setPalette(palette);
         window.setPalette(palette);
-        window.setStyleSheet(iridium::ui::sharedStyleSheet(palette));
         app.processEvents();
+        check(window.styleSheet() == iridium::ui::sharedStyleSheet(palette),
+            "palette changes automatically refresh the tab stylesheet");
+        const auto colors = iridium::ui::tabColors(palette);
 
         const QImage image = window.grab().toImage();
         const QPoint unusedSpace = tabs->viewport()->mapTo(&window,
             QPoint(12, tabs->viewport()->height() - 12));
-        check(pixelAt(image, unusedSpace) == palette.color(QPalette::Window),
-            dark ? "dark tabs blend into the sidebar" : "light tabs blend into the sidebar");
+        check(pixelAt(image, unusedSpace) == colors.background,
+            std::string(theme.name) + " tabs blend into the sidebar");
         const QRect selected = tabs->visualItemRect(tabs->currentItem());
         const QPoint selection = tabs->viewport()->mapTo(&window,
             QPoint(selected.left() + 4, selected.center().y()));
-        check(pixelAt(image, selection) == palette.color(QPalette::Highlight),
+        check(pixelAt(image, selection) == colors.selectedBackground,
             "the active tab has a visible selection background");
+
+        for (bool active : { false, true }) {
+            for (bool hovered : { false, true }) {
+                for (bool selected : { false, true })
+                    checkTabState(tabs, colors, selected, hovered, active);
+            }
+        }
 
         // Padding must protect the close glyph, even with a favicon and a title
         // much wider than the sidebar. Compare only that region's pixels.
@@ -178,9 +307,8 @@ int main(int argc, char** argv)
         if (argc > 1) {
             const QString directory = QString::fromLocal8Bit(argv[1]);
             check(QDir().mkpath(directory), "the screenshot directory exists");
-            check(window.grab().save(directory + (dark
-                    ? QStringLiteral("/vertical-tabs-dark.png")
-                    : QStringLiteral("/vertical-tabs-light.png"))),
+            check(window.grab().save(directory + QStringLiteral("/vertical-tabs-%1.png")
+                    .arg(QString::fromLatin1(theme.name))),
                 "the sidebar screenshot is saved");
         }
         item->setText(QStringLiteral("Tab 3"));

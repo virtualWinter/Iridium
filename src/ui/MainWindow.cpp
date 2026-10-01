@@ -77,9 +77,11 @@ public:
         QStyledItemDelegate::paint(painter, option, index);
 
         const QPoint center = tabCloseRect(option.rect).center();
+        const auto colors = ui::tabColors(option.widget
+            ? option.widget->window()->palette() : option.palette);
         const QColor color = option.state.testFlag(QStyle::State_Selected)
-            ? option.palette.color(QPalette::HighlightedText)
-            : option.palette.color(QPalette::Text);
+            ? colors.selectedText
+            : (option.state.testFlag(QStyle::State_MouseOver) ? colors.hoverText : colors.text);
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
         painter->setPen(QPen(color, 1.5, Qt::SolidLine, Qt::RoundCap));
@@ -247,6 +249,7 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     m_tabs->setUniformItemSizes(true);
     m_tabs->setWordWrap(false);
     m_tabs->setTextElideMode(Qt::ElideRight);
+    m_tabs->setMouseTracking(true);
     m_tabs->setSelectionMode(QAbstractItemView::SingleSelection);
     m_tabs->setDragDropMode(QAbstractItemView::InternalMove);
     m_tabs->setDefaultDropAction(Qt::MoveAction);
@@ -975,6 +978,12 @@ void MainWindow::updateDecorationState()
 void MainWindow::changeEvent(QEvent* event)
 {
     QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange
+        || event->type() == QEvent::ApplicationPaletteChange) {
+        const QString updatedStyle = ui::sharedStyleSheet(palette());
+        if (styleSheet() != updatedStyle)
+            setStyleSheet(updatedStyle);
+    }
     if (event->type() == QEvent::WindowStateChange || event->type() == QEvent::ActivationChange)
         updateDecorationState();
 }

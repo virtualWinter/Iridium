@@ -1,8 +1,10 @@
 #pragma once
 
+#include <QColor>
 #include <QObject>
 #include <QString>
 
+class QPalette;
 class QWidget;
 
 namespace iridium::ui {
@@ -22,6 +24,21 @@ void makeFrameless(QWidget* window);
 // The stylesheet both windows apply. `palette` supplies the colours, so the
 // result follows the system colour scheme rather than hard-coding one.
 QString sharedStyleSheet(const QPalette& palette);
+
+// The stylesheet and the painted close control must use the same foreground
+// for each tab state, rather than unrelated native selection palette roles.
+// Text pairs meet 4.5:1; the selection indicator meets 3:1 against both surfaces.
+struct TabColors {
+    QColor background;
+    QColor text;
+    QColor hoverBackground;
+    QColor hoverText;
+    QColor selectedBackground;
+    QColor selectedText;
+    QColor selectedIndicator;
+};
+
+TabColors tabColors(const QPalette& palette);
 
 // Gives a frameless window the two things the platform would otherwise have
 // provided: a place to drag the window by, and a way to resize it from its

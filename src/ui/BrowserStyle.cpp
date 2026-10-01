@@ -3,8 +3,12 @@
 #include <QApplication>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QPalette>
 #include <QWidget>
 #include <QWindow>
+
+#include <algorithm>
+#include <cmath>
 
 namespace iridium::ui {
 
@@ -20,7 +24,76 @@ constexpr int kInnerRadius = 11;
 // edge that the translucency shows through.
 constexpr int kInset = 3;
 
+double luminance(const QColor& color)
+{
+    const auto linear = [](double channel) {
+        return channel <= 0.04045 ? channel / 12.92
+                                  : std::pow((channel + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF())
+        + 0.0722 * linear(color.blueF());
+}
+
+double contrast(const QColor& first, const QColor& second)
+{
+    const double a = luminance(first);
+    const double b = luminance(second);
+    return (std::max(a, b) + 0.05) / (std::min(a, b) + 0.05);
+}
+
+QColor opaque(QColor color)
+{
+    color = color.toRgb();
+    color.setAlpha(255);
+    return color;
+}
+
+QColor readableText(const QColor& background, const QColor& preferred)
+{
+    if (contrast(background, preferred) >= 4.5)
+        return preferred;
+    const QColor black(Qt::black);
+    const QColor white(Qt::white);
+    return contrast(background, black) >= contrast(background, white) ? black : white;
+}
+
+QColor blend(const QColor& background, const QColor& foreground, double amount)
+{
+    return QColor(qRound(background.red() * (1.0 - amount) + foreground.red() * amount),
+        qRound(background.green() * (1.0 - amount) + foreground.green() * amount),
+        qRound(background.blue() * (1.0 - amount) + foreground.blue() * amount));
+}
+
 } // namespace
+
+TabColors tabColors(const QPalette& palette)
+{
+    TabColors colors;
+    // Tabs live on Window, not Base. Keep the same readable colours when the
+    // window is inactive instead of inheriting a theme's dimmed selection text.
+    colors.background = opaque(palette.color(QPalette::Active, QPalette::Window));
+    const QColor preferred = opaque(palette.color(QPalette::Active, QPalette::WindowText));
+    colors.text = readableText(colors.background, preferred);
+    colors.hoverBackground = blend(colors.background, colors.text, 0.06);
+    colors.hoverText = readableText(colors.hoverBackground, preferred);
+    colors.selectedBackground = blend(colors.background, colors.text, 0.12);
+    colors.selectedText = readableText(colors.selectedBackground, preferred);
+
+    // Selection is a neutral surface with a small accent indicator, not an
+    // accent-coloured block that assumes white text will be readable on it.
+    const auto indicatorContrast = [&colors](const QColor& indicator) {
+        return std::min(contrast(indicator, colors.background),
+            contrast(indicator, colors.selectedBackground));
+    };
+    colors.selectedIndicator = opaque(palette.color(QPalette::Active, QPalette::Highlight));
+    if (indicatorContrast(colors.selectedIndicator) < 3.0) {
+        const QColor black(Qt::black);
+        const QColor white(Qt::white);
+        colors.selectedIndicator = indicatorContrast(black) >= indicatorContrast(white)
+            ? black : white;
+    }
+    return colors;
+}
 
 void makeFrameless(QWidget* window)
 {
@@ -32,11 +105,10 @@ void makeFrameless(QWidget* window)
 
 QString sharedStyleSheet(const QPalette& palette)
 {
-    // Only the shell colour is resolved to a literal. Everything else is a
-    // palette() reference, so the same stylesheet text is correct in both the
-    // light and the dark scheme; a resolved colour would have to be rebuilt
-    // whenever the scheme changed.
-    const QString windowBackground = palette.color(QPalette::Window).name();
+    // Resolve the shell and tab states together. Palette changes rebuild these
+    // values so the text and close controls always match the painted surface.
+    const QString windowBackground = palette.color(QPalette::Active, QPalette::Window).name();
+    const TabColors tabs = tabColors(palette);
 
     return QStringLiteral(R"(
         QWidget#browserRoot, QWidget#settingsRoot {
@@ -73,11 +145,12 @@ QString sharedStyleSheet(const QPalette& palette)
         QListWidget#tabList {
             background: transparent; border: 0; outline: 0; }
         QListWidget#tabList::item {
-            color: palette(text); border: 0; border-radius: 8px;
-            padding: 8px 32px 8px 10px; }
-        QListWidget#tabList::item:hover { background: palette(midlight); }
-        QListWidget#tabList::item:selected {
-            background: palette(highlight); color: palette(highlighted-text); }
+            color: %2; border: 0; border-left: 2px solid transparent;
+            border-radius: 8px; padding: 8px 32px 8px 8px; }
+        QListWidget#tabList::item:hover { background: %3; color: %4; }
+        QListWidget#tabList::item:selected,
+        QListWidget#tabList::item:selected:hover {
+            background: %5; color: %6; border-left-color: %7; font-weight: 600; }
         QPushButton#settingsButton {
             background: palette(base); color: palette(button-text);
             border: 1px solid palette(mid); border-radius: 8px; padding: 6px 14px; }
@@ -121,7 +194,9 @@ QString sharedStyleSheet(const QPalette& palette)
             color: palette(disabled, palette(text)); }
         QToolTip { background: palette(base); color: palette(text);
             border: 1px solid palette(mid); padding: 4px 6px; }
-    )").arg(windowBackground);
+    )").arg(windowBackground, tabs.text.name(), tabs.hoverBackground.name(),
+        tabs.hoverText.name(), tabs.selectedBackground.name(), tabs.selectedText.name(),
+        tabs.selectedIndicator.name());
 }
 
 FramelessChrome::FramelessChrome(QWidget* window)
