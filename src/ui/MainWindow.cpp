@@ -113,22 +113,13 @@ protected:
     }
 };
 
-QIcon makePlusIcon(const QColor& color)
-{
-    QPixmap pixmap(16, 16);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap));
-    painter.drawLine(QPointF(8, 3), QPointF(8, 13));
-    painter.drawLine(QPointF(3, 8), QPointF(13, 8));
-    return QIcon(pixmap);
-}
-
-// A palette-driven overflow menu, with no dependency on the desktop icon theme.
-// Three dots rather than hamburger bars: the button sits beside the window
-// controls, where a stacked-bar icon reads as a window-level control.
-QIcon makeMenuIcon(const QColor& color)
+// Draws one 16px glyph at 1x and at 2x.
+//
+// The sidebar icons are drawn rather than themed for two reasons: a theme has no
+// guarantee of matching glyphs, and the themed download icon adds its own corner
+// arrow, which is not part of the download sign. Two sizes are supplied so the
+// glyph stays crisp instead of being stretched from a single bitmap.
+QIcon makeGlyphIcon(const QColor& color, const std::function<void(QPainter&)>& draw)
 {
     QIcon icon;
     for (int scale : { 1, 2 }) {
@@ -137,28 +128,45 @@ QIcon makeMenuIcon(const QColor& color)
         QPainter painter(&pixmap);
         painter.scale(scale, scale);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(Qt::NoPen);
+        painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         painter.setBrush(color);
-        for (int x : { 3, 8, 13 })
-            painter.drawEllipse(QPointF(x, 8.0), 1.6, 1.6);
+        draw(painter);
         painter.end();
         icon.addPixmap(pixmap);
     }
     return icon;
 }
 
+// A plain plus: one vertical stroke crossed by one horizontal stroke.
+QIcon makePlusIcon(const QColor& color)
+{
+    return makeGlyphIcon(color, [](QPainter& painter) {
+        painter.drawLine(QPointF(8, 3), QPointF(8, 13));
+        painter.drawLine(QPointF(3, 8), QPointF(13, 8));
+    });
+}
+
+// Three dots rather than hamburger bars: the button sits beside the window
+// controls, where a stacked-bar icon reads as a window-level control.
+QIcon makeMenuIcon(const QColor& color)
+{
+    return makeGlyphIcon(color, [color](QPainter& painter) {
+        painter.setPen(Qt::NoPen);
+        for (int x : { 3, 8, 13 })
+            painter.drawEllipse(QPointF(x, 8.0), 1.6, 1.6);
+    });
+}
+
+// The download sign only: a downward arrow over a baseline. No tray box and no
+// corner arrow, which are decorations rather than part of the sign.
 QIcon makeDownloadIcon(const QColor& color)
 {
-    QPixmap pixmap(16, 16);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter.drawLine(QPointF(8, 2.5), QPointF(8, 10.5));
-    painter.drawLine(QPointF(4.5, 7), QPointF(8, 10.5));
-    painter.drawLine(QPointF(11.5, 7), QPointF(8, 10.5));
-    painter.drawLine(QPointF(3, 13.5), QPointF(13, 13.5));
-    return QIcon(pixmap);
+    return makeGlyphIcon(color, [](QPainter& painter) {
+        painter.drawLine(QPointF(8, 2.5), QPointF(8, 10.5));
+        painter.drawLine(QPointF(4.5, 7), QPointF(8, 10.5));
+        painter.drawLine(QPointF(11.5, 7), QPointF(8, 10.5));
+        painter.drawLine(QPointF(3, 13.5), QPointF(13, 13.5));
+    });
 }
 
 } // namespace
@@ -338,13 +346,13 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     const QColor buttonColor = palette().color(QPalette::ButtonText);
 
     auto* addTabButton = makeSidebarAction(QStringLiteral("New tab (Ctrl+T)"),
-        QIcon::fromTheme(QStringLiteral("tab-new"), makePlusIcon(buttonColor)));
+        makePlusIcon(buttonColor));
     sidebarActions->addWidget(addTabButton);
 
     sidebarActions->addStretch(1);
 
     m_downloadButton = makeSidebarAction(QStringLiteral("Downloads"),
-        QIcon::fromTheme(QStringLiteral("download"), makeDownloadIcon(buttonColor)));
+        makeDownloadIcon(buttonColor));
     m_downloadsMenu = new QMenu(m_downloadButton);
     m_downloadButton->setMenu(m_downloadsMenu);
     m_downloadButton->setPopupMode(QToolButton::InstantPopup);

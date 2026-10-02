@@ -230,6 +230,96 @@ int main(int argc, char** argv)
     if (!newTab || !menuButton || !browserMenu || !settingsAction || !historyAction)
         return 1;
 
+    // The New Tab and Downloads glyphs are drawn by the window rather than taken
+    // from the desktop icon theme, so the drawn shapes are what the user sees.
+    // Reading the icon back through QIcon::pixmap() also confirms both sizes were
+    // supplied, so a high-DPI scale is not a stretched 16px bitmap.
+    {
+        QToolButton* downloads = nullptr;
+        for (auto* button : actions) {
+            if (button->toolTip() == QStringLiteral("Downloads"))
+                downloads = button;
+        }
+        check(downloads != nullptr, "the downloads button exists");
+
+        const auto sizes = [](QToolButton* button) {
+            QStringList found;
+            for (const QSize& size : button->icon().availableSizes()) {
+                if (size.width() == 16 || size.width() == 32)
+                    found.append(QString::number(size.width()));
+            }
+            found.sort();
+            return found;
+        };
+
+        const auto inkedPixels = [](const QImage& image) {
+            int ink = 0;
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixelColor(x, y).alpha() > 0)
+                        ++ink;
+                }
+            }
+            return ink;
+        };
+        // Ink outside the glyph box means the icon carries something else, such
+        // as the themed download icon's corner arrow or a tray around it.
+        // Coordinates are taken from the icon's device pixels, not assumed to be
+        // 16px: at a 2x scale the glyph box is 32px wide, and comparing against
+        // fixed indices would read empty pixels and fail a correct icon.
+        const auto inkedWithinGlyph = [](const QImage& image, QRectF glyph) {
+            const QSizeF box = image.size();
+            const QRectF scaled = QRectF(glyph.x() * box.width() / 16.0,
+                glyph.y() * box.height() / 16.0,
+                glyph.width() * box.width() / 16.0,
+                glyph.height() * box.height() / 16.0);
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixelColor(x, y).alpha() > 0 && !scaled.contains(x, y))
+                        return false;
+                }
+            }
+            return true;
+        };
+        // Samples the expected stroke positions in the glyph's own 16-unit space.
+        const auto strokePixel = [](const QImage& image, qreal gx, qreal gy) {
+            const qreal scaleX = image.width() / 16.0;
+            const qreal scaleY = image.height() / 16.0;
+            return image.pixelColor(qRound(gx * scaleX), qRound(gy * scaleY));
+        };
+
+        if (downloads) {
+            check(sizes(downloads) == QStringList({ QStringLiteral("16"), QStringLiteral("32") }),
+                "the downloads icon ships a 16px and a 32px glyph");
+            const QImage image = downloads->icon().pixmap(16, 16).toImage()
+                .convertToFormat(QImage::Format_ARGB32);
+            // Rows 1..14 and columns 2..14 are where this sign can legitimately
+            // put ink: the arrowhead and baseline are the widest strokes, and the
+            // 1.6px pen spreads one pixel past the nominal coordinates. Ink
+            // outside that belongs to a themed tray or corner arrow.
+            check(inkedWithinGlyph(image, QRectF(1, 1, 14, 14)),
+                "the downloads icon is the bare sign, with no tray or corner arrow");
+            check(inkedPixels(image) > 20, "the downloads icon is not blank");
+        }
+
+        check(sizes(newTab) == QStringList({ QStringLiteral("16"), QStringLiteral("32") }),
+            "the new-tab icon ships a 16px and a 32px glyph");
+        const QImage plus = newTab->icon().pixmap(16, 16).toImage()
+            .convertToFormat(QImage::Format_ARGB32);
+        check(inkedWithinGlyph(plus, QRectF(2, 2, 12, 12)),
+            "the new-tab icon is a plain plus inside the glyph box");
+        // A standard plus: ink along the horizontal midline and the vertical
+        // midline, and none in the four corners. A themed "new document" icon
+        // would draw a page outline and fail both.
+        for (int x = 4; x < 12; ++x)
+            check(strokePixel(plus, x, 8).alpha() > 0, "the plus has a horizontal stroke");
+        for (int y = 4; y < 12; ++y)
+            check(strokePixel(plus, 8, y).alpha() > 0, "the plus has a vertical stroke");
+        for (const QPoint& corner : { QPoint(3, 3), QPoint(12, 3), QPoint(3, 12), QPoint(12, 12) })
+            check(strokePixel(plus, corner.x(), corner.y()).alpha() == 0,
+                "the plus has no page outline");
+    }
+
     // Beside the navigation buttons, after Reload and before the window
     // decorations. Compared as left-to-right geometry, because findChildren
     // returns children in construction order rather than layout order.
