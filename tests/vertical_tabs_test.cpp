@@ -3,24 +3,29 @@
 #include "ui/BrowserStyle.hpp"
 #include "ui/decoration/windowdecoration.h"
 #include "ui/settings/SettingsStore.hpp"
+#include "ui/settings/SettingsWindow.hpp"
 
+#include <QAction>
 #include <QApplication>
 #include <QDir>
 #include <QImage>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QPainter>
 #include <QScrollBar>
 #include <QStackedWidget>
 #include <QStyleOptionViewItem>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
 #include <QToolButton>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -121,6 +126,41 @@ void checkTabState(QListWidget* tabs, const iridium::ui::TabColors& colors,
     }
 }
 
+bool useBrowserMenu(QToolButton* button, QAction* action, bool keyboard = false)
+{
+    auto* menu = button->menu();
+    bool opened = false;
+    // InstantPopup runs a nested event loop. Drive the real popup once it is
+    // visible, then always dismiss it so a failed selection cannot hang a test.
+    QTimer choose;
+    choose.setSingleShot(true);
+    QObject::connect(&choose, &QTimer::timeout, menu, [&] {
+        opened = menu->isVisible() && QApplication::activePopupWidget() == menu;
+        if (action && opened) {
+            if (keyboard) {
+                menu->setActiveAction(action);
+                QTest::keyClick(menu, Qt::Key_Return);
+            } else {
+                QTest::mouseClick(menu, Qt::LeftButton, Qt::NoModifier,
+                    menu->actionGeometry(action).center());
+            }
+        } else {
+            QTest::keyClick(menu, Qt::Key_Escape);
+        }
+        menu->hide();
+    });
+    choose.start(0);
+    if (keyboard) {
+        button->setFocus();
+        QTest::keyClick(button, Qt::Key_Space);
+    } else {
+        QTest::mouseClick(button, Qt::LeftButton);
+    }
+    choose.stop();
+    QCoreApplication::processEvents();
+    return opened;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -170,15 +210,70 @@ int main(int argc, char** argv)
         return 1;
 
     QToolButton* newTab = nullptr;
-    const auto actions = sidebar->findChildren<QToolButton*>(QStringLiteral("sidebarAction"));
-    check(actions.size() == 4, "the sidebar has its four actions");
+    auto* menuButton = sidebar->findChild<QToolButton*>(QStringLiteral("browserMenuButton"));
+    auto* browserMenu = menuButton ? menuButton->menu() : nullptr;
+    auto* settingsAction = window.findChild<QAction*>(QStringLiteral("openSettingsAction"));
+    auto* historyAction = window.findChild<QAction*>(QStringLiteral("openHistoryAction"));
+    auto actions = sidebar->findChildren<QToolButton*>(QStringLiteral("sidebarAction"));
+    if (menuButton)
+        actions.append(menuButton);
+    check(actions.size() == 3, "the sidebar has only New Tab, Downloads and Menu buttons");
+    check(menuButton && browserMenu && settingsAction && historyAction, "the hamburger and its actions exist");
     for (auto* button : actions) {
         if (button->toolTip().startsWith(QStringLiteral("New tab")))
             newTab = button;
+        check(button->toolTip() != QStringLiteral("Settings") && button->toolTip() != QStringLiteral("History"),
+            "Settings and History no longer occupy separate sidebar buttons");
     }
     check(newTab != nullptr, "the new-tab button exists");
-    if (!newTab)
+    if (!newTab || !menuButton || !browserMenu || !settingsAction || !historyAction)
         return 1;
+
+    check(menuButton->popupMode() == QToolButton::InstantPopup && !menuButton->icon().isNull(),
+        "one hamburger click opens the menu with a visible icon");
+    check(menuButton->accessibleName() == QStringLiteral("Menu"), "the icon-only menu has an accessible name");
+    check(browserMenu->actions() == QList<QAction*>({ historyAction, settingsAction }),
+        "History and Settings share the compact menu");
+    check(historyAction->shortcut() == QKeySequence(QStringLiteral("Ctrl+H"))
+            && settingsAction->shortcut() == QKeySequence(QStringLiteral("Ctrl+,"))
+            && window.actions().contains(historyAction) && window.actions().contains(settingsAction),
+        "the menu actions also own the existing window shortcuts");
+
+    check(useBrowserMenu(menuButton, settingsAction), "clicking the hamburger opens the actual popup");
+    auto* settings = window.findChild<iridium::SettingsWindow*>();
+    check(settings && settings->isVisible(), "choosing Settings opens its dialog");
+    if (settings) {
+        settings->selectCategory(QString(iridium::SettingsWindow::appearanceCategory()));
+        settings->close();
+        app.processEvents();
+        check(useBrowserMenu(menuButton, historyAction, true), "the hamburger can also be operated with the keyboard");
+        auto* settingsPanes = settings->findChild<QStackedWidget*>(QStringLiteral("settingsPanes"));
+        check(settings->isVisible() && settingsPanes
+                && settingsPanes->currentWidget()->objectName() == QStringLiteral("historyPage"),
+            "choosing History opens the history category in the reused dialog");
+        settings->close();
+        app.processEvents();
+        check(useBrowserMenu(menuButton, settingsAction), "the menu can be reopened after closing settings");
+        check(window.findChildren<iridium::SettingsWindow*>().size() == 1 && settings->isVisible()
+                && settingsPanes && settingsPanes->currentWidget()->objectName() == QStringLiteral("historyPage"),
+            "Settings reuses the same dialog and remembers the selected category");
+        settings->close();
+        app.processEvents();
+        check(useBrowserMenu(menuButton, nullptr) && !settings->isVisible(),
+            "Escape dismisses the menu without opening a dialog");
+
+        for (const auto& [key, name] : {
+                 std::pair { Qt::Key_Comma, "Settings" }, std::pair { Qt::Key_H, "History" } }) {
+            window.activateWindow();
+            tabs->setFocus();
+            app.processEvents();
+            QTest::keyClick(tabs, key, Qt::ControlModifier);
+            app.processEvents();
+            check(settings->isVisible(), std::string(name) + " keyboard shortcut still opens the dialog");
+            settings->close();
+            app.processEvents();
+        }
+    }
 
     check(tabs->count() == 1, "one initial tab");
     newTab->click();
@@ -272,6 +367,28 @@ int main(int argc, char** argv)
         check(window.styleSheet() == iridium::ui::sharedStyleSheet(palette),
             "palette changes automatically refresh the tab stylesheet");
         const auto colors = iridium::ui::tabColors(palette);
+
+        const QImage buttonImage = menuButton->grab().toImage();
+        check(strongestContrast(buttonImage, menuButton->rect(), colors.background) >= 3.0,
+            std::string(theme.name) + " keeps the hamburger readable after a palette change");
+        browserMenu->popup(menuButton->mapToGlobal(QPoint(0, 0)));
+        browserMenu->setActiveAction(historyAction);
+        app.processEvents();
+        const QImage menuImage = browserMenu->grab().toImage();
+        const QRect selectedAction = browserMenu->actionGeometry(historyAction);
+        check(pixelAt(menuImage, QPoint(selectedAction.left() + 3, selectedAction.center().y()))
+                == colors.hoverBackground,
+            "the menu uses the shared neutral hover fill");
+        check(strongestContrast(menuImage, selectedAction.adjusted(12, 2, -12, -2), colors.hoverBackground) >= 4.5,
+            std::string(theme.name) + " renders readable menu entries and shortcuts");
+        if (argc > 1) {
+            const QString directory = QString::fromLocal8Bit(argv[1]);
+            check(QDir().mkpath(directory), "the menu screenshot directory exists");
+            check(menuImage.save(directory + QStringLiteral("/browser-menu-%1.png").arg(QString::fromLatin1(theme.name))),
+                "the hamburger menu screenshot is saved");
+        }
+        browserMenu->hide();
+        app.processEvents();
 
         const QImage image = window.grab().toImage();
         const QPoint unusedSpace = tabs->viewport()->mapTo(&window,

@@ -173,13 +173,6 @@ void ExtensionsPage::buildUi()
     heading->setFont(headingFont);
     root->addWidget(heading);
 
-    auto* subtitle = new QLabel(
-        tr("Extensions add features to Iridium. Each one runs only in pages it "
-           "declared an interest in."), this);
-    subtitle->setWordWrap(true);
-    subtitle->setObjectName(QStringLiteral("settingsSubtitle"));
-    root->addWidget(subtitle);
-
     auto* toolbar = new QHBoxLayout;
     toolbar->setSpacing(8);
 
@@ -266,9 +259,9 @@ void ExtensionsPage::buildUi()
     actions->setSpacing(8);
     // Optional permissions, each a checkbox. Built per selection because the
     // set differs per extension.
-    auto* optionalCaption = new QLabel(tr("Optional permissions"), m_details);
-    optionalCaption->setObjectName(QStringLiteral("settingsCaption"));
-    detailsLayout->addWidget(optionalCaption);
+    m_optionalCaption = new QLabel(tr("Optional permissions"), m_details);
+    m_optionalCaption->setObjectName(QStringLiteral("settingsCaption"));
+    detailsLayout->addWidget(m_optionalCaption);
     m_optionalPermissions = new QWidget(m_details);
     m_optionalPermissions->setObjectName(QStringLiteral("settingsPermissions"));
     auto* optionalLayout = new QVBoxLayout(m_optionalPermissions);
@@ -334,9 +327,7 @@ void ExtensionsPage::buildUi()
     root->addWidget(m_body, 1);
 
     auto* note = new QLabel(
-        tr("Iridium has no extension host process, so background pages and "
-           "service workers do not run. Content scripts and the tabs, windows "
-           "and storage APIs do work."), this);
+        tr("Background pages and service workers are not supported."), this);
     note->setObjectName(QStringLiteral("settingsFootnote"));
     note->setWordWrap(true);
     root->addWidget(note);
@@ -420,11 +411,7 @@ void ExtensionsPage::rebuild()
         m_body->setCurrentIndex(0);
     } else {
         m_empty->setText(filter.isEmpty()
-            ? (failures > 0
-                ? tr("No extensions are installed.\n\n%1 folder(s) could not be read; "
-                     "see below for details.")
-                : tr("No extensions are installed.\n\nChoose Install to add an "
-                     "unpacked extension folder."))
+            ? tr("No extensions installed")
             : tr("No extension matches \"%1\".").arg(filter));
         m_body->setCurrentIndex(1);
     }
@@ -518,21 +505,20 @@ void ExtensionsPage::updateDetails()
 
 void ExtensionsPage::rebuildPermissionToggles(const extensions::Extension& extension)
 {
-    // Clear the previous extension's checkboxes. Deleting them here rather than
-    // creating a new container keeps the signal connections simple.
-    while (auto* box = m_optionalPermissions->findChild<QCheckBox*>())
-        delete box;
+    // Rebuild only actual controls; an extension with no optional permissions
+    // needs neither an empty section nor a repeated explanatory label.
+    while (auto* item = m_optionalPermissions->layout()->takeAt(0)) {
+        delete item->widget();
+        delete item;
+    }
 
     const QStringList optional = extension.manifest().optionalPermissions();
     const QStringList granted = m_registry.grantedPermissions(extension.id());
 
-    if (optional.isEmpty()) {
-        auto* none = new QLabel(tr("This extension asked for no optional "
-                                   "permissions."), m_optionalPermissions);
-        none->setObjectName(QStringLiteral("settingsFootnote"));
-        m_optionalPermissions->layout()->addWidget(none);
+    m_optionalCaption->setVisible(!optional.isEmpty());
+    m_optionalPermissions->setVisible(!optional.isEmpty());
+    if (optional.isEmpty())
         return;
-    }
 
     for (const QString& permission : optional) {
         auto* box = new QCheckBox(permission, m_optionalPermissions);

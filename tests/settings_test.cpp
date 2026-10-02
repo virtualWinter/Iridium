@@ -123,6 +123,18 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
     registry.loadFrom(QDir::cleanPath(systemDir));
 
     iridium::ExtensionsPage page(registry);
+    check(page.findChildren<QLabel*>(QStringLiteral("settingsSubtitle")).isEmpty(),
+        "extensions has no redundant introductory paragraph");
+    const auto extensionNotes = page.findChildren<QLabel*>(QStringLiteral("settingsFootnote"));
+    check(extensionNotes.size() == 1
+            && extensionNotes.first()->text().contains(QStringLiteral("not supported")),
+        "the concise extension-support warning is retained");
+    auto* optionalControls = find<QWidget>(&page, "settingsPermissions");
+    check(optionalControls && optionalControls->isHidden()
+            && optionalControls->findChildren<QLabel*>().isEmpty(),
+        "extensions with no optional permissions have no empty explanatory section");
+    if (!optionalControls)
+        return 1;
     // The shared list styling, which the history page uses too. The extensions
     // list used to have its own name, and the history list borrowed that one
     // instead of getting its own; both now share settingsEntryList.
@@ -239,6 +251,30 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
             "revoking takes effect");
     }
     registry.reload();
+
+    // The section appears only when the selected extension has actual controls,
+    // and repeated selection must not accumulate 'no permissions' paragraphs.
+    const auto selectExtension = [&](const QString& id) {
+        for (int row = 0; row < list->count(); ++row) {
+            if (list->item(row)->data(Qt::UserRole + 100).toString() == id) {
+                list->setCurrentRow(row);
+                return;
+            }
+        }
+        check(false, "extension available for selection: " + id.toStdString());
+    };
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        selectExtension(QStringLiteral("beta"));
+        const auto boxes = optionalControls->findChildren<QCheckBox*>();
+        check(!optionalControls->isHidden() && boxes.size() == 1
+                && boxes.first()->text() == QStringLiteral("tabs")
+                && boxes.first()->isChecked() == registry.hasPermission(QStringLiteral("beta"), "tabs"),
+            "declared optional permissions retain their live controls");
+        selectExtension(QStringLiteral("alpha"));
+        check(optionalControls->isHidden() && optionalControls->findChildren<QCheckBox*>().isEmpty()
+                && optionalControls->findChildren<QLabel*>().isEmpty(),
+            "selecting an extension without optional permissions removes the empty section");
+    }
 
     // Reordering: the run order is what injection iterates, so moving an extension
 // must change it. Assertions compare whole orderings rather than single
@@ -374,6 +410,8 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
 
         iridium::history::HistoryPage page(history,
             [](const QString&) {});
+        check(page.findChildren<QLabel*>(QStringLiteral("settingsFootnote")).isEmpty(),
+            "history has no redundant profile or sync explanation");
         auto* list = find<QListWidget>(&page, "settingsEntryList");
         auto* search = find<QLineEdit>(&page, "settingsSearch");
         check(list != nullptr, "the history list exists");
@@ -489,6 +527,8 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
     // --- profiles pane ---------------------------------------------------
     {
         iridium::ProfilesPage profiles;
+        check(profiles.findChildren<QLabel*>(QStringLiteral("settingsSubtitle")).isEmpty(),
+            "profiles has no introductory paragraph");
         auto* combo = find<QComboBox>(&profiles, "settingsCombo");
         auto* nameField = find<QLineEdit>(&profiles, "settingsSearch");
         check(combo != nullptr, "the profile combo exists");
@@ -511,6 +551,9 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
         };
         QPushButton* removeButton = buttonLabelled(QStringLiteral("Remove"));
         QPushButton* createButton = buttonLabelled(QStringLiteral("Create"));
+        QPushButton* switchButton = buttonLabelled(QStringLiteral("Switch"));
+        check(switchButton && switchButton->text().contains(QStringLiteral("restart")),
+            "the profile-switch button keeps the restart requirement explicit");
         check(removeButton != nullptr, "the remove button exists");
         check(createButton != nullptr, "the create button exists");
         // The default profile is protected, so the button that would remove it
@@ -559,6 +602,8 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
 
     // The appearance pane reflects the stored value.
     iridium::AppearancePage appearance;
+    check(appearance.findChildren<QLabel*>(QStringLiteral("settingsFootnote")).isEmpty(),
+        "appearance has no lengthy colour-scheme explanation");
     auto* combo = find<QComboBox>(&appearance, "settingsCombo");
     check(combo != nullptr, "colour scheme combo exists");
     if (combo) {
@@ -589,6 +634,8 @@ writeFile(ExtensionPaths::userDirectory() + QStringLiteral("/broken/manifest.jso
     // anything else first.
     {
         iridium::GeneralPage general;
+        check(general.findChildren<QLabel*>(QStringLiteral("settingsFootnote")).isEmpty(),
+            "general has no redundant search explanation");
         auto* home = find<QLineEdit>(&general, "settingsSearch");
         check(home != nullptr, "the homepage field exists");
         if (home) {

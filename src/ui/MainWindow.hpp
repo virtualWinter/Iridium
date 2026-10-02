@@ -111,6 +111,7 @@ private:
     QToolButton* m_forwardButton { nullptr };
     QToolButton* m_reloadButton { nullptr };
     QToolButton* m_downloadButton { nullptr };
+    QToolButton* m_menuButton { nullptr };
     QMenu* m_downloadsMenu { nullptr };
     QTimer* m_downloadsRefresh { nullptr };
     QHash<std::uint64_t, DownloadEntry> m_downloads;

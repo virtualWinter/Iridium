@@ -18,6 +18,7 @@
 #include "ui/settings/SettingsWindow.hpp"
 
 #include <QAbstractButton>
+#include <QAction>
 #include <QApplication>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -401,23 +402,14 @@ int main(int argc, char** argv)
     // MainWindow caches the dialog pointer and used to set WA_DeleteOnClose on
     // it without clearing the pointer, so the second open found a non-null
     // pointer to a deleted QDialog and called show() on freed memory. Driven
-    // through the sidebar's settings button, which is the path a user takes, and
+    // through the sidebar menu's Settings action, which is the path a user takes, and
     // closing in between with Escape: the escape route and the button route are
     // the two ways the window is dismissed.
     {
-        // Located by its tooltip, which is what identifies it to a user. Every
-        // sidebar button shares one object name, so the name cannot address one.
-        QList<QToolButton*> buttons;
-        for (auto* button : window.findChildren<QToolButton*>()) {
-            if (button->toolTip().compare(QStringLiteral("Settings"),
-                    Qt::CaseInsensitive) == 0) {
-                buttons.append(button);
-            }
-        }
-        auto* settingsButton = buttons.isEmpty() ? nullptr : buttons.first();
-        check(settingsButton != nullptr, "the sidebar has a settings button");
+        auto* settingsAction = window.findChild<QAction*>(QStringLiteral("openSettingsAction"));
+        check(settingsAction != nullptr, "the sidebar menu has a Settings action");
 
-        if (settingsButton) {
+        if (settingsAction) {
             // Shown, because a dialog's isVisible() is false while its parent is
             // hidden, which would make the visibility assertions below pass for
             // the wrong reason.
@@ -426,7 +418,7 @@ int main(int argc, char** argv)
 
             // Every settings window parented to the browser window, not just the
             // first: this test already built one of its own above, so a single
-            // findChild would return that one rather than the one the button
+            // findChild would return that one rather than the one the action
             // opened.
             const auto settingsWindows = [&window] {
                 QList<SettingsWindow*> found;
@@ -436,14 +428,14 @@ int main(int argc, char** argv)
             };
             const int before = settingsWindows().size();
 
-            settingsButton->click();     // first open
+            settingsAction->trigger();   // first open
             app.processEvents();
             const QList<SettingsWindow*> afterFirst = settingsWindows();
             check(afterFirst.size() == before + 1,
                 "the first open creates a settings window, got "
                     + std::to_string(afterFirst.size()) + " for "
                     + std::to_string(before) + " before");
-            // The last one is the newly created one: the click appends it.
+            // The last one is the newly created one: the action appends it.
             SettingsWindow* first = afterFirst.isEmpty()
                 ? nullptr : afterFirst.last();
             check(first != nullptr, "the first open creates the settings window");
@@ -455,7 +447,7 @@ int main(int argc, char** argv)
                 check(!first->isVisible(), "closing hides it");
             }
 
-            settingsButton->click();     // second open: the stale-pointer path
+            settingsAction->trigger();   // second open: the stale-pointer path
             app.processEvents();
             const QList<SettingsWindow*> afterSecond = settingsWindows();
             check(afterSecond.size() == before + 1,

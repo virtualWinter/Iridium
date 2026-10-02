@@ -62,6 +62,7 @@ private:
     // Update manifest location per extension, so the dialog remembers it.
     QHash<QString, QString> m_updateSources;
     // Holds one checkbox per optional permission of the selected extension.
+    QLabel* m_optionalCaption { nullptr };
     QWidget* m_optionalPermissions { nullptr };
     QLabel* m_status { nullptr };
     // Shown when the filter matches nothing, or nothing is installed at all.

@@ -47,6 +47,7 @@ AppearancePage::AppearancePage(QWidget* parent)
     // combo says the same thing and can be selected.
     m_scheme = new QComboBox(this);
     m_scheme->setObjectName(QStringLiteral("settingsCombo"));
+    m_scheme->setToolTip(tr("Sets the colour scheme requested by websites"));
     m_scheme->addItem(tr("Follow system"), systemScheme());
     m_scheme->addItem(tr("Light"), lightScheme());
     m_scheme->addItem(tr("Dark"), darkScheme());
@@ -59,15 +60,6 @@ AppearancePage::AppearancePage(QWidget* parent)
     m_status->setWordWrap(true);
     m_status->setVisible(false);
     root->addWidget(m_status);
-
-    auto* note = new QLabel(this);
-    note->setObjectName(QStringLiteral("settingsFootnote"));
-    note->setWordWrap(true);
-    note->setText(tr(
-        "Pages are told the same scheme through prefers-color-scheme, so a site "
-        "with a dark and a light design follows this too. Choosing Light or Dark "
-        "overrides the system hint for every tab."));
-    root->addWidget(note);
 
     root->addStretch(1);
 

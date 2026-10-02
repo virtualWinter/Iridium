@@ -34,14 +34,6 @@ ProfilesPage::ProfilesPage(QWidget* parent)
     heading->setFont(headingFont);
     root->addWidget(heading);
 
-    auto* subtitle = new QLabel(
-        tr("A profile keeps its own extensions, extension data, settings and "
-           "history. Switching profiles needs a restart, because open tabs belong "
-           "to the profile that created them."), this);
-    subtitle->setObjectName(QStringLiteral("settingsSubtitle"));
-    subtitle->setWordWrap(true);
-    root->addWidget(subtitle);
-
     auto* form = new QFormLayout;
     form->setContentsMargins(0, 0, 0, 0);
     form->setSpacing(10);
@@ -57,7 +49,7 @@ ProfilesPage::ProfilesPage(QWidget* parent)
     nameLayout->setSpacing(8);
     m_name = new QLineEdit(nameRow);
     m_name->setObjectName(QStringLiteral("settingsSearch"));
-    m_name->setPlaceholderText(tr("Name for the new profile"));
+    m_name->setPlaceholderText(tr("Profile name"));
     nameLayout->addWidget(m_name, 1);
     auto* createButton = new QPushButton(tr("Create"), nameRow);
     createButton->setObjectName(QStringLiteral("settingsButton"));
@@ -67,7 +59,7 @@ ProfilesPage::ProfilesPage(QWidget* parent)
 
     auto* actions = new QHBoxLayout;
     actions->setSpacing(8);
-    auto* switchButton = new QPushButton(tr("Switch to this profile"), this);
+    auto* switchButton = new QPushButton(tr("Switch and restart"), this);
     switchButton->setObjectName(QStringLiteral("settingsButton"));
     actions->addWidget(switchButton);
     m_remove = new QPushButton(tr("Remove profile"), this);
@@ -139,7 +131,7 @@ void ProfilesPage::refresh()
 
     m_detail->setText(profile.isValid()
         ? tr("Data directory:\n%1").arg(profile.path)
-        : tr("Select a profile to see where its data lives."));
+        : tr("No profile selected"));
 }
 
 void ProfilesPage::createProfile()

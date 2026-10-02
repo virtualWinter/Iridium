@@ -120,12 +120,6 @@ HistoryPage::HistoryPage(HistoryStore& store, OpenUrlHandler openUrl, QWidget* p
 
     root->addLayout(actions);
 
-    auto* note = new QLabel(tr("History belongs to this profile and is never "
-                               "synced anywhere."), this);
-    note->setObjectName(QStringLiteral("settingsFootnote"));
-    note->setWordWrap(true);
-    root->addWidget(note);
-
     connect(m_list, &QListWidget::itemActivated, this, &HistoryPage::openSelected);
     connect(m_list, &QListWidget::currentItemChanged,
         this, &HistoryPage::onSelectionChanged);
@@ -181,7 +175,7 @@ void HistoryPage::refresh()
     m_body->setCurrentIndex(hasResults ? 0 : 1);
     if (!hasResults) {
         m_empty->setText(query.text.isEmpty()
-            ? tr("Nothing has been visited in this profile yet.")
+            ? tr("No history yet")
             : tr("No history entry matches \"%1\".").arg(query.text));
     }
     onSelectionChanged();

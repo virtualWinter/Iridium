@@ -14,6 +14,7 @@
 
 #include <QAbstractItemModel>
 #include <QAbstractItemView>
+#include <QAction>
 #include <QApplication>
 #include <QDesktopServices>
 #include <QEvent>
@@ -124,20 +125,23 @@ QIcon makePlusIcon(const QColor& color)
     return QIcon(pixmap);
 }
 
-// A clock face, drawn rather than themed so the button is never empty when the
-// icon theme has no view-history entry.
-QIcon makeHistoryIcon(const QColor& color)
+// A palette-driven hamburger, with no dependency on the desktop icon theme.
+QIcon makeMenuIcon(const QColor& color)
 {
-    constexpr int size = 16;
-    QPixmap pixmap(size, size);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, 1.5));
-    painter.drawEllipse(QRectF(2.0, 2.0, size - 4.0, size - 4.0));
-    painter.drawLine(QPointF(8, 8), QPointF(8, 4.5));
-    painter.drawLine(QPointF(8, 8), QPointF(11, 9.5));
-    return QIcon(pixmap);
+    QIcon icon;
+    for (int scale : { 1, 2 }) {
+        QPixmap pixmap(16 * scale, 16 * scale);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.scale(scale, scale);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap));
+        for (int y : { 4, 8, 12 })
+            painter.drawLine(QPointF(3, y), QPointF(13, y));
+        painter.end();
+        icon.addPixmap(pixmap);
+    }
+    return icon;
 }
 
 QIcon makeDownloadIcon(const QColor& color)
@@ -308,18 +312,7 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
         QIcon::fromTheme(QStringLiteral("tab-new"), makePlusIcon(buttonColor)));
     sidebarActions->addWidget(addTabButton);
 
-    auto* historyButton = makeSidebarAction(QStringLiteral("History"),
-        QIcon::fromTheme(QStringLiteral("view-history"), makeHistoryIcon(buttonColor)));
-    connect(historyButton, &QToolButton::clicked, this, &MainWindow::openHistory);
-    sidebarActions->addWidget(historyButton);
-
     sidebarActions->addStretch(1);
-
-    auto* settingsButton = makeSidebarAction(QStringLiteral("Settings"),
-        QIcon::fromTheme(QStringLiteral("configure"),
-            style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
-    connect(settingsButton, &QToolButton::clicked, this, &MainWindow::openSettings);
-    sidebarActions->addWidget(settingsButton);
 
     m_downloadButton = makeSidebarAction(QStringLiteral("Downloads"),
         QIcon::fromTheme(QStringLiteral("download"), makeDownloadIcon(buttonColor)));
@@ -329,6 +322,29 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     connect(m_downloadsMenu, &QMenu::aboutToShow,
         this, &MainWindow::rebuildDownloadsMenu);
     sidebarActions->addWidget(m_downloadButton);
+
+    m_menuButton = makeSidebarAction(tr("Menu"), makeMenuIcon(ui::tabColors(palette()).text));
+    m_menuButton->setObjectName(QStringLiteral("browserMenuButton"));
+    m_menuButton->setAccessibleName(tr("Menu"));
+    m_menuButton->setFixedSize(32, 32);
+    auto* browserMenu = new QMenu(m_menuButton);
+    browserMenu->setObjectName(QStringLiteral("browserMenu"));
+    m_menuButton->setMenu(browserMenu);
+    m_menuButton->setPopupMode(QToolButton::InstantPopup);
+    sidebarActions->addWidget(m_menuButton);
+
+    // The menu entries and window shortcuts are the same actions, so opening
+    // either path cannot drift or register an ambiguous duplicate shortcut.
+    auto* historyAction = browserMenu->addAction(tr("&History"));
+    historyAction->setObjectName(QStringLiteral("openHistoryAction"));
+    historyAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+H")));
+    connect(historyAction, &QAction::triggered, this, &MainWindow::openHistory);
+    addAction(historyAction);
+    auto* settingsAction = browserMenu->addAction(tr("&Settings"));
+    settingsAction->setObjectName(QStringLiteral("openSettingsAction"));
+    settingsAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
+    connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
+    addAction(settingsAction);
     sidebarLayout->addLayout(sidebarActions);
 
     m_downloadsRefresh = new QTimer(this);
@@ -421,12 +437,6 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     connect(switchNextShortcut, &QShortcut::activated, this, [this] {
         if (m_tabs->count()) m_tabs->setCurrentRow((m_tabs->currentRow() + 1) % m_tabs->count());
     });
-
-    auto* settingsShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+,")), this);
-    connect(settingsShortcut, &QShortcut::activated, this, &MainWindow::openSettings);
-
-    auto* historyShortcut = new QShortcut(QKeySequence(QStringLiteral("Ctrl+H")), this);
-    connect(historyShortcut, &QShortcut::activated, this, &MainWindow::openHistory);
 
     connect(&SettingsStore::instance(), &SettingsStore::forcedColorSchemeChanged,
         this, [this] { applyColorScheme(); });
@@ -983,6 +993,8 @@ void MainWindow::changeEvent(QEvent* event)
         const QString updatedStyle = ui::sharedStyleSheet(palette());
         if (styleSheet() != updatedStyle)
             setStyleSheet(updatedStyle);
+        if (m_menuButton)
+            m_menuButton->setIcon(makeMenuIcon(ui::tabColors(palette()).text));
     }
     if (event->type() == QEvent::WindowStateChange || event->type() == QEvent::ActivationChange)
         updateDecorationState();

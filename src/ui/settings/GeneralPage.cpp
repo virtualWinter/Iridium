@@ -127,12 +127,6 @@ GeneralPage::GeneralPage(QWidget* parent)
     m_status->setVisible(false);
     root->addWidget(m_status);
 
-    auto* note = new QLabel(tr("An address that is not a URL is searched for "
-                               "using the template above."), this);
-    note->setObjectName(QStringLiteral("settingsFootnote"));
-    note->setWordWrap(true);
-    root->addWidget(note);
-
     root->addStretch(1);
 
     showValues();

@@ -137,16 +137,22 @@ QString sharedStyleSheet(const QPalette& palette)
         QLineEdit#settingsSearch { border-radius: 8px; padding: 6px 10px; }
         QLineEdit#addressBar:focus, QLineEdit#settingsSearch:focus {
             border-color: palette(highlight); }
-        QToolButton#chromeButton, QToolButton#sidebarAction,
+        QToolButton#chromeButton, QToolButton#sidebarAction, QToolButton#browserMenuButton,
         QToolButton#settingsButton {
             border: 0; border-radius: 8px; color: palette(button-text); }
         QToolButton#chromeButton { padding: 7px; }
-        QToolButton#sidebarAction, QToolButton#settingsButton {
+        QToolButton#sidebarAction, QToolButton#browserMenuButton, QToolButton#settingsButton {
             padding: 8px; text-align: left; }
-        QToolButton#chromeButton:hover, QToolButton#sidebarAction:hover,
+        QToolButton#chromeButton:hover, QToolButton#sidebarAction:hover, QToolButton#browserMenuButton:hover,
         QToolButton#settingsButton:hover { background: palette(midlight); }
         QToolButton#settingsButton:disabled {
             color: palette(disabled, palette(text)); }
+        QToolButton#browserMenuButton::menu-indicator { image: none; }
+        QMenu#browserMenu {
+            background: %1; color: %2; border: 1px solid palette(mid);
+            border-radius: 8px; padding: 4px; }
+        QMenu#browserMenu::item { padding: 6px 12px; border-radius: 6px; }
+        QMenu#browserMenu::item:selected { background: %3; color: %4; }
         QListWidget#tabList {
             background: transparent; border: 0; outline: 0; }
         QListWidget#tabList::item {
