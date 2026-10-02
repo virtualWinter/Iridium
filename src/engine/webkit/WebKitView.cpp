@@ -35,6 +35,7 @@
 #include <functional>
 #include <memory>
 #include <stdexcept>
+#include <sys/utsname.h>
 
 #ifndef IRIDIUM_VERSION
 #define IRIDIUM_VERSION "0.0.1"
@@ -209,14 +210,20 @@ WebKitView::WebKitView()
     }
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
-    // Identify as Iridium only. This is intentionally not Mozilla/WebKit
-    // shaped; sites that sniff for those tokens will treat the browser as
-    // unknown. The GLib port's site-specific quirks override even a custom UA
-    // on hosts such as DuckDuckGo and Google Accounts/Docs. Disable that policy
-    // before any navigation so HTTP headers, frames and workers keep our UA.
+    // Identify as Iridium with the actual OS and machine architecture, not
+    // Mozilla/Safari or a fabricated X11/macOS platform. The GLib port's quirks
+    // override even a custom UA on DuckDuckGo and Google Accounts/Docs. Disable
+    // that policy before navigation so headers, frames and workers keep our UA.
     auto* settings = webkit_web_view_get_settings(m_webView);
     webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
-    const QString userAgent = QStringLiteral("Iridium/%1").arg(QStringLiteral(IRIDIUM_VERSION));
+    QString userAgent = QStringLiteral("Iridium/%1").arg(QStringLiteral(IRIDIUM_VERSION));
+    struct utsname system {};
+    if (uname(&system) == 0) {
+        // Match WebKit's native navigator.platform source. Do not expose the
+        // hostname, kernel release, machine IDs or other high-entropy details.
+        userAgent += QStringLiteral(" (%1 %2)").arg(
+            QString::fromLatin1(system.sysname), QString::fromLatin1(system.machine));
+    }
     webkit_settings_set_user_agent(settings, userAgent.toUtf8().constData());
     m_preferredColorScheme = std::make_unique<PreferredColorScheme>(m_webView);
 

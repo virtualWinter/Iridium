@@ -120,10 +120,22 @@ acknowledged after Qt has painted them.
 
 ## User agent
 
-Pages receive a plain `Iridium/<project version>` user agent (currently
-`Iridium/0.0.1`, taken from the CMake project version). It intentionally has no
-Mozilla/AppleWebKit/Safari tokens, so sites that sniff for those will treat the
-browser as unknown.
+Pages and engine HTTP requests receive
+`Iridium/<project version> (<OS> <architecture>)`, for example
+`Iridium/0.0.1 (Linux x86_64)`. The version comes from CMake; OS and architecture
+come from `uname()` at runtime, not hard-coded build-machine values. If system
+information cannot be read, the comment is omitted rather than invented.
+This follows the product/version plus comment syntax of the
+[User-Agent header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent).
+It intentionally has no Mozilla/AppleWebKit/Safari tokens, so sites that sniff
+for those will treat the browser as unknown. It does not claim X11 on a Wayland
+session or send hostnames, machine IDs, kernel releases or detailed hardware.
+
+WebKit's native `navigator.platform` uses the same OS/architecture source, and
+`navigator.appVersion` derives from the configured agent. Both remain native,
+including in frames and workers. `navigator.hardwareConcurrency` keeps WebKit's
+privacy-limited value, not necessarily the machine's exact logical CPU count.
+No extra hardware-discovery API or JavaScript property override is added.
 
 Setting `WebKitSettings:user-agent` alone is insufficient: the GLib port's
 [`WebPage::platformUserAgent()`](https://github.com/WebKit/WebKit/blob/wpewebkit-2.52.6/Source/WebKit/WebProcess/WebPage/glib/WebPageGLib.cpp)
@@ -142,8 +154,9 @@ spoofing. No page-visible JavaScript override is used.
 origins, then uses a loopback HTTP proxy to serve ordinary and quirked hosts
 without contacting real websites. It verifies main requests, redirects,
 stylesheets, scripts, iframe and dedicated-worker requests, document/frame/worker
-`navigator.userAgent`, page and worker `fetch()`, and reloads. These fixtures
-check identification, not whether the real websites accept the plain agent.
+`navigator.userAgent`, matching `platform`/`appVersion` and usable native
+`hardwareConcurrency`, page and worker `fetch()`, and reloads. These fixtures
+check identification, not whether the real websites accept the agent.
 
 ## Benchmarking
 

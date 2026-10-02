@@ -139,6 +139,8 @@ regenerate `docs/extensions/` after changing the specification pins.
   back into the Qt widget. Set `IRIDIUM_DISABLE_GPU_PRESENTATION=1` to force
   the software SHM fallback.
 - Pages are told `prefers-color-scheme` from the active Qt colour scheme.
+- The user agent identifies Iridium and the actual OS/CPU architecture, for
+  example `Iridium/0.0.1 (Linux x86_64)`, without pretending to be Safari or macOS.
 
 ## The browser
 

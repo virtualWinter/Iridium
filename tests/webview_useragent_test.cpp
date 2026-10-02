@@ -1,4 +1,4 @@
-// Verifies the plain Iridium user agent in JavaScript and real HTTP requests,
+// Verifies the Iridium user agent and actual OS/CPU in JavaScript and HTTP,
 // including origins for which WebKit normally substitutes a compatibility UA.
 // A loopback proxy serves all fixtures; no request reaches those real sites.
 
@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <functional>
 #include <string>
+#include <utility>
+#include <sys/utsname.h>
 
 #ifndef IRIDIUM_VERSION
 #define IRIDIUM_VERSION "0.0.1"
@@ -33,7 +35,10 @@ constexpr int kTimeoutMs = 30000;
 
 constexpr char kPage[] = R"HTML(<!doctype html>
 <html><head><meta charset="utf-8"><title>ua-start</title></head>
-<body><script>document.title = 'ua:' + navigator.userAgent;</script></body></html>)HTML";
+<body><script>document.title = 'ua:' + JSON.stringify({
+    userAgent: navigator.userAgent, platform: navigator.platform,
+    appVersion: navigator.appVersion, hardwareConcurrency: navigator.hardwareConcurrency
+});</script></body></html>)HTML";
 
 constexpr char kHttpPage[] = R"HTML(<!doctype html>
 <html><head><meta charset="utf-8"><title>ua-start</title>
@@ -41,7 +46,7 @@ constexpr char kHttpPage[] = R"HTML(<!doctype html>
 <script>
 const frameReport = new Promise(resolve => {
     addEventListener('message', event => {
-        if (event.data.kind === 'frame') resolve(event.data.userAgent);
+        if (event.data.kind === 'frame') resolve(event.data);
     });
 });
 const workerReport = new Promise((resolve, reject) => {
@@ -54,8 +59,12 @@ addEventListener('load', async () => {
     try {
         const [frame, worker, fetch] = await Promise.all([frameReport, workerReport, fetchReport]);
         document.title = 'ua:' + JSON.stringify({
-            document: navigator.userAgent, script: window.scriptUserAgent,
-            frame, worker: worker.userAgent, workerFetch: worker.httpUserAgent, fetch
+            document: {
+                userAgent: navigator.userAgent, platform: navigator.platform,
+                appVersion: navigator.appVersion, hardwareConcurrency: navigator.hardwareConcurrency
+            },
+            script: window.scriptUserAgent, frame, worker,
+            workerFetch: worker.httpUserAgent, fetch
         });
     } catch (error) { document.title = 'ua-error:' + error; }
 });
@@ -110,14 +119,17 @@ private:
         } else if (path == QLatin1String("/page")) {
             body = kHttpPage;
         } else if (path == QLatin1String("/frame")) {
-            body = "<!doctype html><script>parent.postMessage({kind:'frame',userAgent:navigator.userAgent}, '*');</script>";
+            body = "<!doctype html><script>parent.postMessage({kind:'frame',"
+                   "userAgent:navigator.userAgent,platform:navigator.platform,"
+                   "appVersion:navigator.appVersion,hardwareConcurrency:navigator.hardwareConcurrency}, '*');</script>";
         } else if (path == QLatin1String("/script.js")) {
             type = "application/javascript";
             body = "window.scriptUserAgent = navigator.userAgent;";
         } else if (path == QLatin1String("/worker.js")) {
             type = "application/javascript";
             body = "fetch('/worker-fetch').then(r => r.text()).then(httpUserAgent => "
-                   "postMessage({userAgent:navigator.userAgent,httpUserAgent}));";
+                   "postMessage({userAgent:navigator.userAgent,platform:navigator.platform,"
+                   "appVersion:navigator.appVersion,hardwareConcurrency:navigator.hardwareConcurrency,httpUserAgent}));";
         } else if (path == QLatin1String("/style.css")) {
             type = "text/css";
             body = "body { color: black; }";
@@ -162,6 +174,15 @@ int main(int argc, char** argv)
     qputenv("XDG_CACHE_HOME", environment.path().toUtf8());
     QApplication app(argc, argv);
 
+    struct utsname system {};
+    if (uname(&system) != 0) {
+        std::fprintf(stderr, "FAIL: could not read the host OS and CPU architecture\n");
+        return 1;
+    }
+    const QByteArray expectedPlatform = QByteArray(system.sysname) + ' ' + system.machine;
+    const QByteArray expectedVersion = QByteArray(IRIDIUM_VERSION) + " (" + expectedPlatform + ')';
+    const QByteArray expected = "Iridium/" + expectedVersion;
+
     UserAgentServer server;
     if (!server.listen(QHostAddress::LocalHost)) {
         std::fprintf(stderr, "FAIL: could not start the local HTTP fixture: %s\n", qPrintable(server.errorString()));
@@ -181,6 +202,24 @@ int main(int argc, char** argv)
     view.show();
 
     int failures = 0;
+    const auto checkNavigator = [&](const QJsonObject& report, const std::string& context) {
+        for (const auto& [field, value] : {
+                 std::pair { "userAgent", expected }, std::pair { "platform", expectedPlatform },
+                 std::pair { "appVersion", expectedVersion } }) {
+            const QByteArray actual = report.value(QLatin1String(field)).toString().toUtf8();
+            if (actual != value) {
+                std::fprintf(stderr, "FAIL: %s navigator.%s: '%s' (expected '%s')\n",
+                    context.c_str(), field, actual.constData(), value.constData());
+                ++failures;
+            }
+        }
+        // Keep WebKit's native privacy-limited CPU count rather than exposing
+        // or inventing the host's exact logical-processor count.
+        if (report.value(QStringLiteral("hardwareConcurrency")).toInt() < 1) {
+            std::fprintf(stderr, "FAIL: %s did not expose a usable native hardwareConcurrency\n", context.c_str());
+            ++failures;
+        }
+    };
     for (const char* origin : { "data:", "https://duckduckgo.com/", "https://accounts.google.com/",
              "https://drive.google.com/", "https://docs.google.com/", "https://www.paypal.com/" }) {
         title.clear();
@@ -193,15 +232,11 @@ int main(int argc, char** argv)
             ++failures;
             continue;
         }
-        const std::string userAgent = title.substr(3);
-        std::printf("%s user agent: %s\n", origin, userAgent.c_str());
-        if (userAgent != std::string("Iridium/") + IRIDIUM_VERSION) {
-            std::fprintf(stderr, "FAIL: %s replaced the Iridium user agent\n", origin);
-            ++failures;
-        }
+        const auto report = QJsonDocument::fromJson(QByteArray::fromStdString(title.substr(3))).object();
+        checkNavigator(report, origin);
+        std::printf("%s navigator: %s\n", origin, title.substr(3).c_str());
     }
 
-    const QByteArray expected = "Iridium/" IRIDIUM_VERSION;
     const auto checkHttpPage = [&](const char* origin, bool reload) {
         title.clear();
         server.requests.clear();
@@ -221,7 +256,9 @@ int main(int argc, char** argv)
             ++failures;
             return;
         }
-        for (const char* field : { "document", "script", "frame", "worker", "workerFetch", "fetch" }) {
+        for (const char* scope : { "document", "frame", "worker" })
+            checkNavigator(report.value(QLatin1String(scope)).toObject(), std::string(origin) + ' ' + scope);
+        for (const char* field : { "script", "workerFetch", "fetch" }) {
             const QByteArray actual = report.value(QLatin1String(field)).toString().toUtf8();
             if (actual != expected) {
                 std::fprintf(stderr, "FAIL: %s %s user agent: '%s'\n", origin, field, actual.constData());
