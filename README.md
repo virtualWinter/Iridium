@@ -153,8 +153,9 @@ reorder them.
 Selection uses a neutral fill and a small accent marker. Tab labels and close
 controls share contrast-checked foreground colours in normal, hovered and
 selected states, including when the window is inactive.
-New Tab and Downloads stay below the tab list; a hamburger menu groups History
-and Settings without adding more sidebar buttons.
+New Tab and Downloads stay below the tab list. A three-dot menu between Reload
+and the window controls groups History and Settings, whose keyboard shortcuts
+are unchanged.
 
 Passing a URL opens it in the first tab. Ctrl+T opens another, Ctrl+H opens the
 history pane and Ctrl+, opens settings, which manages extensions and profiles.

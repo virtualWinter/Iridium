@@ -147,7 +147,7 @@ QString sharedStyleSheet(const QPalette& palette)
         QToolButton#settingsButton:hover { background: palette(midlight); }
         QToolButton#settingsButton:disabled {
             color: palette(disabled, palette(text)); }
-        QToolButton#browserMenuButton::menu-indicator { image: none; }
+        QToolButton#browserMenuButton::menu-indicator { image: none; width: 0px; }
         QMenu#browserMenu {
             background: %1; color: %2; border: 1px solid palette(mid);
             border-radius: 8px; padding: 4px; }

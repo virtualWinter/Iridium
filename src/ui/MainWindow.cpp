@@ -125,7 +125,9 @@ QIcon makePlusIcon(const QColor& color)
     return QIcon(pixmap);
 }
 
-// A palette-driven hamburger, with no dependency on the desktop icon theme.
+// A palette-driven overflow menu, with no dependency on the desktop icon theme.
+// Three dots rather than hamburger bars: the button sits beside the window
+// controls, where a stacked-bar icon reads as a window-level control.
 QIcon makeMenuIcon(const QColor& color)
 {
     QIcon icon;
@@ -135,9 +137,10 @@ QIcon makeMenuIcon(const QColor& color)
         QPainter painter(&pixmap);
         painter.scale(scale, scale);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(QPen(color, 1.6, Qt::SolidLine, Qt::RoundCap));
-        for (int y : { 4, 8, 12 })
-            painter.drawLine(QPointF(3, y), QPointF(13, y));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(color);
+        for (int x : { 3, 8, 13 })
+            painter.drawEllipse(QPointF(x, 8.0), 1.6, 1.6);
         painter.end();
         icon.addPixmap(pixmap);
     }
@@ -226,6 +229,32 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     headerLayout->addWidget(m_backButton);
     headerLayout->addWidget(m_forwardButton);
     headerLayout->addWidget(m_reloadButton);
+
+    // The menu belongs with the other chrome controls rather than at the foot of
+    // the sidebar: it opens window-level surfaces, exactly like the navigation
+    // buttons and window decorations beside it.
+    m_menuButton = makeNavigationButton(tr("Menu"), QStyle::SP_DialogOpenButton);
+    m_menuButton->setObjectName(QStringLiteral("browserMenuButton"));
+    m_menuButton->setAccessibleName(tr("Menu"));
+    m_menuButton->setIcon(makeMenuIcon(ui::tabColors(palette()).text));
+    auto* browserMenu = new QMenu(m_menuButton);
+    browserMenu->setObjectName(QStringLiteral("browserMenu"));
+    m_menuButton->setMenu(browserMenu);
+    m_menuButton->setPopupMode(QToolButton::InstantPopup);
+    headerLayout->addWidget(m_menuButton);
+
+    // The menu entries and window shortcuts are the same actions, so opening
+    // either path cannot drift or register an ambiguous duplicate shortcut.
+    auto* historyAction = browserMenu->addAction(tr("&History"));
+    historyAction->setObjectName(QStringLiteral("openHistoryAction"));
+    historyAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+H")));
+    connect(historyAction, &QAction::triggered, this, &MainWindow::openHistory);
+    addAction(historyAction);
+    auto* settingsAction = browserMenu->addAction(tr("&Settings"));
+    settingsAction->setObjectName(QStringLiteral("openSettingsAction"));
+    settingsAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
+    connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
+    addAction(settingsAction);
 
     auto* dragHandle = m_chrome->dragHandle();
     dragHandle->setParent(header);
@@ -322,29 +351,6 @@ MainWindow::MainWindow(Browser& browser, std::string initialUrl)
     connect(m_downloadsMenu, &QMenu::aboutToShow,
         this, &MainWindow::rebuildDownloadsMenu);
     sidebarActions->addWidget(m_downloadButton);
-
-    m_menuButton = makeSidebarAction(tr("Menu"), makeMenuIcon(ui::tabColors(palette()).text));
-    m_menuButton->setObjectName(QStringLiteral("browserMenuButton"));
-    m_menuButton->setAccessibleName(tr("Menu"));
-    m_menuButton->setFixedSize(32, 32);
-    auto* browserMenu = new QMenu(m_menuButton);
-    browserMenu->setObjectName(QStringLiteral("browserMenu"));
-    m_menuButton->setMenu(browserMenu);
-    m_menuButton->setPopupMode(QToolButton::InstantPopup);
-    sidebarActions->addWidget(m_menuButton);
-
-    // The menu entries and window shortcuts are the same actions, so opening
-    // either path cannot drift or register an ambiguous duplicate shortcut.
-    auto* historyAction = browserMenu->addAction(tr("&History"));
-    historyAction->setObjectName(QStringLiteral("openHistoryAction"));
-    historyAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+H")));
-    connect(historyAction, &QAction::triggered, this, &MainWindow::openHistory);
-    addAction(historyAction);
-    auto* settingsAction = browserMenu->addAction(tr("&Settings"));
-    settingsAction->setObjectName(QStringLiteral("openSettingsAction"));
-    settingsAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
-    connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
-    addAction(settingsAction);
     sidebarLayout->addLayout(sidebarActions);
 
     m_downloadsRefresh = new QTimer(this);

@@ -210,15 +210,16 @@ int main(int argc, char** argv)
         return 1;
 
     QToolButton* newTab = nullptr;
-    auto* menuButton = sidebar->findChild<QToolButton*>(QStringLiteral("browserMenuButton"));
+    auto* menuButton = header->findChild<QToolButton*>(QStringLiteral("browserMenuButton"));
     auto* browserMenu = menuButton ? menuButton->menu() : nullptr;
     auto* settingsAction = window.findChild<QAction*>(QStringLiteral("openSettingsAction"));
     auto* historyAction = window.findChild<QAction*>(QStringLiteral("openHistoryAction"));
     auto actions = sidebar->findChildren<QToolButton*>(QStringLiteral("sidebarAction"));
-    if (menuButton)
-        actions.append(menuButton);
-    check(actions.size() == 3, "the sidebar has only New Tab, Downloads and Menu buttons");
-    check(menuButton && browserMenu && settingsAction && historyAction, "the hamburger and its actions exist");
+    check(actions.size() == 2, "the sidebar foot holds only New Tab and Downloads");
+    check(menuButton && browserMenu && settingsAction && historyAction,
+        "the overflow menu and its actions exist");
+    check(!sidebar->findChildren<QToolButton*>(QStringLiteral("browserMenuButton")).isEmpty(),
+        "the menu button is not duplicated in the sidebar foot");
     for (auto* button : actions) {
         if (button->toolTip().startsWith(QStringLiteral("New tab")))
             newTab = button;
@@ -229,9 +230,34 @@ int main(int argc, char** argv)
     if (!newTab || !menuButton || !browserMenu || !settingsAction || !historyAction)
         return 1;
 
+    // Beside the navigation buttons, after Reload and before the window
+    // decorations. Compared as left-to-right geometry, because findChildren
+    // returns children in construction order rather than layout order.
+    {
+        const QRect menuBounds = menuButton->geometry();
+        const QRect reloadBounds = [header] {
+            for (auto* button : header->findChildren<QToolButton*>(QStringLiteral("chromeButton"))) {
+                if (button->toolTip() == QStringLiteral("Reload"))
+                    return button->geometry();
+            }
+            return QRect();
+        }();
+        check(!reloadBounds.isNull() && reloadBounds.right() < menuBounds.left()
+                && menuBounds.left() >= reloadBounds.left(),
+            "the menu sits directly after Reload in the header");
+        for (auto* decoration : header->findChildren<WindowDecoration*>()) {
+            const QRect bounds = decoration->geometry();
+            check(bounds.left() > menuBounds.right() || bounds.right() < menuBounds.left(),
+                "the menu does not overlap the window decorations");
+        }
+        check(menuButton->parentWidget() == header, "the menu is part of the header row");
+        check(menuButton->toolTip() == QStringLiteral("Menu")
+                && menuButton->accessibleName() == QStringLiteral("Menu"),
+            "the icon-only menu is labelled for tooltips and assistive technology");
+    }
+
     check(menuButton->popupMode() == QToolButton::InstantPopup && !menuButton->icon().isNull(),
-        "one hamburger click opens the menu with a visible icon");
-    check(menuButton->accessibleName() == QStringLiteral("Menu"), "the icon-only menu has an accessible name");
+        "one menu click opens the popup with a visible icon");
     check(browserMenu->actions() == QList<QAction*>({ historyAction, settingsAction }),
         "History and Settings share the compact menu");
     check(historyAction->shortcut() == QKeySequence(QStringLiteral("Ctrl+H"))
@@ -239,14 +265,14 @@ int main(int argc, char** argv)
             && window.actions().contains(historyAction) && window.actions().contains(settingsAction),
         "the menu actions also own the existing window shortcuts");
 
-    check(useBrowserMenu(menuButton, settingsAction), "clicking the hamburger opens the actual popup");
+    check(useBrowserMenu(menuButton, settingsAction), "clicking the menu opens the actual popup");
     auto* settings = window.findChild<iridium::SettingsWindow*>();
     check(settings && settings->isVisible(), "choosing Settings opens its dialog");
     if (settings) {
         settings->selectCategory(QString(iridium::SettingsWindow::appearanceCategory()));
         settings->close();
         app.processEvents();
-        check(useBrowserMenu(menuButton, historyAction, true), "the hamburger can also be operated with the keyboard");
+        check(useBrowserMenu(menuButton, historyAction, true), "the menu can also be operated with the keyboard");
         auto* settingsPanes = settings->findChild<QStackedWidget*>(QStringLiteral("settingsPanes"));
         check(settings->isVisible() && settingsPanes
                 && settingsPanes->currentWidget()->objectName() == QStringLiteral("historyPage"),
@@ -370,7 +396,7 @@ int main(int argc, char** argv)
 
         const QImage buttonImage = menuButton->grab().toImage();
         check(strongestContrast(buttonImage, menuButton->rect(), colors.background) >= 3.0,
-            std::string(theme.name) + " keeps the hamburger readable after a palette change");
+            std::string(theme.name) + " keeps the overflow icon readable after a palette change");
         browserMenu->popup(menuButton->mapToGlobal(QPoint(0, 0)));
         browserMenu->setActiveAction(historyAction);
         app.processEvents();
@@ -385,7 +411,7 @@ int main(int argc, char** argv)
             const QString directory = QString::fromLocal8Bit(argv[1]);
             check(QDir().mkpath(directory), "the menu screenshot directory exists");
             check(menuImage.save(directory + QStringLiteral("/browser-menu-%1.png").arg(QString::fromLatin1(theme.name))),
-                "the hamburger menu screenshot is saved");
+                "the menu screenshot is saved");
         }
         browserMenu->hide();
         app.processEvents();
