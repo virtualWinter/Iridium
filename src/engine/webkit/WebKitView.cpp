@@ -211,9 +211,13 @@ WebKitView::WebKitView()
     setMouseTracking(true);
     // Identify as Iridium only. This is intentionally not Mozilla/WebKit
     // shaped; sites that sniff for those tokens will treat the browser as
-    // unknown.
+    // unknown. The GLib port's site-specific quirks override even a custom UA
+    // on hosts such as DuckDuckGo and Google Accounts/Docs. Disable that policy
+    // before any navigation so HTTP headers, frames and workers keep our UA.
+    auto* settings = webkit_web_view_get_settings(m_webView);
+    webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
     const QString userAgent = QStringLiteral("Iridium/%1").arg(QStringLiteral(IRIDIUM_VERSION));
-    webkit_settings_set_user_agent(webkit_web_view_get_settings(m_webView), userAgent.toUtf8().constData());
+    webkit_settings_set_user_agent(settings, userAgent.toUtf8().constData());
     m_preferredColorScheme = std::make_unique<PreferredColorScheme>(m_webView);
 
     // Downloads are announced by the network session; each view tracks only

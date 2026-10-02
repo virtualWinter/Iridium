@@ -125,6 +125,26 @@ Pages receive a plain `Iridium/<project version>` user agent (currently
 Mozilla/AppleWebKit/Safari tokens, so sites that sniff for those will treat the
 browser as unknown.
 
+Setting `WebKitSettings:user-agent` alone is insufficient: the GLib port's
+[`WebPage::platformUserAgent()`](https://github.com/WebKit/WebKit/blob/wpewebkit-2.52.6/Source/WebKit/WebProcess/WebPage/glib/WebPageGLib.cpp)
+can replace even a custom agent using its
+[`UserAgentQuirks`](https://github.com/WebKit/WebKit/blob/wpewebkit-2.52.6/Source/WebCore/platform/glib/UserAgentQuirks.cpp).
+This was reproduced for DuckDuckGo, Google Accounts/Drive/Docs and PayPal, in
+both JavaScript and HTTP request headers.
+
+Iridium disables `enable-site-specific-quirks` before navigation to retain its
+own identity. This public setting also disables other site-specific engine
+workarounds: WPE has no separate public switch for only user-agent quirks.
+The choice favours consistent identification over automatic compatibility
+spoofing. No page-visible JavaScript override is used.
+
+`webview-useragent` checks the exact agent on `data:` pages and synthetic HTTPS
+origins, then uses a loopback HTTP proxy to serve ordinary and quirked hosts
+without contacting real websites. It verifies main requests, redirects,
+stylesheets, scripts, iframe and dedicated-worker requests, document/frame/worker
+`navigator.userAgent`, page and worker `fetch()`, and reloads. These fixtures
+check identification, not whether the real websites accept the plain agent.
+
 ## Benchmarking
 
 `./build/speedometer-benchmark [iterations]` runs Speedometer 3 through the

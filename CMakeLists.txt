@@ -173,7 +173,7 @@ if(BUILD_TESTING)
     iridium_add_webview_test(webview-render-test webview-render
         tests/webview_render_test.cpp)
     iridium_add_webview_test(webview-useragent-test webview-useragent
-        tests/webview_useragent_test.cpp)
+        tests/webview_useragent_test.cpp Qt6::Network)
 
     # The registry test exercises enable/disable, persistence, matching and
     # path-traversal refusal against real on-disk fixtures.
